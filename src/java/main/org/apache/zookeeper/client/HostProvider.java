@@ -48,6 +48,7 @@ public interface HostProvider {
     public int size();
 
     /**
+     * next方法返回的InetSocketAddress对象必须是已被解析好的，我们可以看到在默认实现StaticHostProvider的构造函数中对列表进行解析
      * The next host to try to connect to.
      * 
      * For a spinDelay of 0 there should be no wait.
@@ -58,6 +59,7 @@ public interface HostProvider {
     public InetSocketAddress next(long spinDelay);
 
     /**
+     * 回调函数，当客户端连接成功的时候，更新服务地址列表
      * Notify the HostProvider of a successful connection.
      * 
      * The HostProvider may use this notification to reset it's inner state.
@@ -65,6 +67,7 @@ public interface HostProvider {
     public void onConnected();
 
     /**
+     * 更新服务器列表，动态调整其IP，使得服务不中断
      * Update the list of servers. This returns true if changing connections is necessary for load-balancing, false otherwise.
      * @param serverAddresses new host list
      * @param currentHost the host to which this client is currently connected

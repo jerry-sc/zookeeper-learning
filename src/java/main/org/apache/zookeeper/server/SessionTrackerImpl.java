@@ -77,6 +77,8 @@ public class SessionTrackerImpl extends ZooKeeperCriticalThread implements
     }
 
     /**
+     * 使用该算法生成的ID，在高8位确定了所在的机器，后56位使用当前时间的毫秒表示随机
+     * 可以得到一个单机唯一的序列号
      * Generates an initial sessionId. High order byte is serverId, next 5
      * 5 bytes are from timestamp, and low order 2 bytes are 0s.
      */

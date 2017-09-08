@@ -44,6 +44,10 @@ public final class StaticHostProvider implements HostProvider {
             5);
 
     private Random sourceOfRandomness;
+
+    /**
+     * 循环队列的两个指针
+     */
     private int lastIndex = -1;
 
     private int currentIndex = -1;
@@ -75,6 +79,7 @@ public final class StaticHostProvider implements HostProvider {
     public StaticHostProvider(Collection<InetSocketAddress> serverAddresses) {
        sourceOfRandomness = new Random(System.currentTimeMillis() ^ this.hashCode());
 
+       // 解析地址列表
         this.serverAddresses = resolveAndShuffle(serverAddresses);
         if (this.serverAddresses.isEmpty()) {
             throw new IllegalArgumentException(
@@ -108,7 +113,8 @@ public final class StaticHostProvider implements HostProvider {
     }
 
     private List<InetSocketAddress> resolveAndShuffle(Collection<InetSocketAddress> serverAddresses) {
-        List<InetSocketAddress> tmpList = new ArrayList<InetSocketAddress>(serverAddresses.size());       
+        List<InetSocketAddress> tmpList = new ArrayList<InetSocketAddress>(serverAddresses.size());
+        // 对所提供的地址列表进行解析
         for (InetSocketAddress address : serverAddresses) {
             try {
                 InetAddress ia = address.getAddress();
@@ -122,6 +128,7 @@ public final class StaticHostProvider implements HostProvider {
                 LOG.warn("No IP address found for server: {}", address, ex);
             }
         }
+        // 随机重排序列表
         Collections.shuffle(tmpList, sourceOfRandomness);
         return tmpList;
     } 
@@ -305,6 +312,10 @@ public final class StaticHostProvider implements HostProvider {
         return null;
     }
 
+    /**
+     * 将之前随机打散后的服务器地址列表拼装成一个环形循环队列
+     * @param spinDelay 考虑到可能地址列表比较少，加入自旋
+     */
     public InetSocketAddress next(long spinDelay) {
         boolean needToSleep = false;
         InetSocketAddress addr;
@@ -325,6 +336,7 @@ public final class StaticHostProvider implements HostProvider {
                 currentIndex = 0;
             }            
             addr = serverAddresses.get(currentIndex);
+            // 如果所有的服务列表已经尝试过一遍了，则需要等待一段事件，再进行重新连接
             needToSleep = needToSleep || (currentIndex == lastIndex && spinDelay > 0);
             if (lastIndex == -1) { 
                 // We don't want to sleep on the first ever connect attempt.

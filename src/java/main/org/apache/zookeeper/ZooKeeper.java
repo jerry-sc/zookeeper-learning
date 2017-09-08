@@ -872,12 +872,17 @@ public class ZooKeeper implements AutoCloseable {
             clientConfig = new ZKClientConfig();
         }
         this.clientConfig = clientConfig;
+        // 创建ClientWatchManager实例
         watchManager = defaultWatchManager();
+        // 设置默认Watcher
         watchManager.defaultWatcher = watcher;
         ConnectStringParser connectStringParser = new ConnectStringParser(
                 connectString);
+
+        // 服务器地址列表管理器
         hostProvider = aHostProvider;
 
+        // 创建网络连接器，管理客户端与服务端网络交互
         cnxn = new ClientCnxn(connectStringParser.getChrootPath(),
                 hostProvider, sessionTimeout, this, watchManager,
                 getClientCnxnSocket(), canBeReadOnly);
@@ -2924,6 +2929,11 @@ public class ZooKeeper implements AutoCloseable {
         return cnxn.sendThread.getClientCnxnSocket().getLocalSocketAddress();
     }
 
+    /**
+     * 创建连接器地城IO处理器
+     * @return
+     * @throws IOException
+     */
     private ClientCnxnSocket getClientCnxnSocket() throws IOException {
         String clientCnxnSocketName = getClientConfig().getProperty(
                 ZKClientConfig.ZOOKEEPER_CLIENT_CNXN_SOCKET);

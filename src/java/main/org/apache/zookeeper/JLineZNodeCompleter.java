@@ -42,6 +42,7 @@ class JLineZNodeCompleter implements Completer {
             }
         }
 
+        // 对ZNode Path 和 命令的补全使用不同的方案
         if (token.startsWith("/")){
             return completeZNode( buffer, token, candidates);
         }

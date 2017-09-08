@@ -51,6 +51,7 @@ public class ZKClientConfig extends ZKConfig {
     @SuppressWarnings("deprecation")
     public static final String ZOOKEEPER_CLIENT_CNXN_SOCKET = ZooKeeper.ZOOKEEPER_CLIENT_CNXN_SOCKET;
     /**
+     * 加密客户端交互，已过时
      * Setting this to "true" will enable encrypted client-server communication.
      */
     @SuppressWarnings("deprecation")

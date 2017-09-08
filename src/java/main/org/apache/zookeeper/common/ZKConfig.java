@@ -101,6 +101,7 @@ public class ZKConfig {
     }
 
     /**
+     * 考虑到向后兼容。所以这么设计，3.5.2开始的版本开始使用配置文件来配置
      * Now onwards client code will use properties from this class but older
      * clients still be setting properties through system properties. So to make
      * this change backward compatible we should set old system properties in

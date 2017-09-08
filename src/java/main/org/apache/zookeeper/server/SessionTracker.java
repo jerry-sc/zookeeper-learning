@@ -27,6 +27,9 @@ import org.apache.zookeeper.KeeperException.SessionExpiredException;
 import org.apache.zookeeper.KeeperException.SessionMovedException;
 
 /**
+ * 服务端会话管理器，负责会话的创建，管理和清理等工作
+ *
+ * 每一个会话在SessionTracker内部都保留了三份分别是sessionById    sessionWithTimeout  sessionSets
  * This is the basic interface that ZooKeeperServer uses to track sessions. The
  * standalone and leader ZooKeeperServer use the same SessionTracker. The
  * FollowerZooKeeperServer uses a SessionTracker which is basically a simple

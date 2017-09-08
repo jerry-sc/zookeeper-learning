@@ -61,6 +61,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     }
     
     /**
+     * 接受或者发送数据包
      * @return true if a packet was received
      * @throws InterruptedException
      * @throws IOException
@@ -128,6 +129,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                             && p.requestHeader.getType() != OpCode.ping
                             && p.requestHeader.getType() != OpCode.auth) {
                         synchronized (pendingQueue) {
+                            // 发送完立即加入pendingQueue等待服务端响应后处理
                             pendingQueue.add(p);
                         }
                     }
@@ -273,6 +275,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     throws IOException {
         sockKey = sock.register(selector, SelectionKey.OP_CONNECT);
         boolean immediateConnect = sock.connect(addr);
+        // 由于处于非阻塞模式下，所以connect立即返回的值可能为false，表示还未建立连接
         if (immediateConnect) {
             sendThread.primeConnection();
         }
@@ -342,6 +345,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     @Override
     void doTransport(int waitTimeOut, List<Packet> pendingQueue, ClientCnxn cnxn)
             throws IOException, InterruptedException {
+        // 这里就是熟悉的NIO接受事件处理，这里SendThread线程将会阻塞，直到达到连接超时的事件，或者连接成功事件发生
         selector.select(waitTimeOut);
         Set<SelectionKey> selected;
         synchronized (this) {
@@ -353,7 +357,9 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         updateNow();
         for (SelectionKey k : selected) {
             SocketChannel sc = ((SocketChannel) k.channel());
+            // 如果连接已经建立完成
             if ((k.readyOps() & SelectionKey.OP_CONNECT) != 0) {
+                // 如果连接仍在建立过程中，那么finishConnect将返回false
                 if (sc.finishConnect()) {
                     updateLastSendAndHeard();
                     updateSocketAddresses();

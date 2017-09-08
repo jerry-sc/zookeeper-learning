@@ -50,6 +50,7 @@ abstract class ClientCnxnSocket {
     protected boolean initialized;
 
     /**
+     * 定义4个字节是因为取服务端返回的数据的第一个字节，而第一个字节正好是数据的长度
      * This buffer is only used to read the length of the incoming message.
      */
     protected final ByteBuffer lenBuffer = ByteBuffer.allocateDirect(4);
@@ -90,6 +91,9 @@ abstract class ClientCnxnSocket {
         return (int) (now - lastHeard);
     }
 
+    /**
+     * 距离上次发送已经过去多久
+     */
     int getIdleSend() {
         return (int) (now - lastSend);
     }
@@ -116,7 +120,9 @@ abstract class ClientCnxnSocket {
     }
 
     protected void readLength() throws IOException {
+        // 第一个字节存的是数据的长度
         int len = incomingBuffer.getInt();
+        // packLen 为设定的最大传输数据的大小
         if (len < 0 || len >= packetLen) {
             throw new IOException("Packet len" + len + " is out of range!");
         }
@@ -155,6 +161,11 @@ abstract class ClientCnxnSocket {
 
     abstract boolean isConnected();
 
+    /**
+     * 建立TCP长连接
+     * @param addr
+     * @throws IOException
+     */
     abstract void connect(InetSocketAddress addr) throws IOException;
 
     /**
@@ -190,6 +201,7 @@ abstract class ClientCnxnSocket {
     abstract void saslCompleted();
 
     /**
+     * 主要用于注册新事件
      * being called after ClientCnxn finish PrimeConnection
      */
     abstract void connectionPrimed();
@@ -229,6 +241,10 @@ abstract class ClientCnxnSocket {
      */
     abstract void sendPacket(Packet p) throws IOException;
 
+    /**
+     * 初始化发送的数据的最大限制
+     * @throws IOException
+     */
     protected void initProperties() throws IOException {
         try {
             packetLen = clientConfig.getInt(ZKConfig.JUTE_MAXBUFFER,
