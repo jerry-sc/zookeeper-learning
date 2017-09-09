@@ -82,6 +82,9 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
             }
             if (!incomingBuffer.hasRemaining()) {
                 incomingBuffer.flip();
+                /**
+                 * 如果相等表示读的是数据的长度
+                 */
                 if (incomingBuffer == lenBuffer) {
                     recvCount++;
                     readLength();
@@ -94,6 +97,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                         // outgoing packets waiting in the outgoingQueue can now be sent.
                         enableWrite();
                     }
+                    // 重置接受下一个请求
                     lenBuffer.clear();
                     incomingBuffer = lenBuffer;
                     updateLastHeard();
@@ -338,6 +342,11 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         wakeupCnxn();
     }
 
+    /**
+     * nio中，在selector中调用wakeup后，如果当前正阻塞在select方法，那么立即跳出阻塞；否则下次调用select方法会立即返回
+     *
+     * 这么设计的目的应该是避免在socket中堆积太多的就绪时间，想即使处理
+     */
     private synchronized void wakeupCnxn() {
         selector.wakeup();
     }

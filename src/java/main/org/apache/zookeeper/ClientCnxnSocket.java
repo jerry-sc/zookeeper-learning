@@ -47,6 +47,9 @@ import org.slf4j.LoggerFactory;
 abstract class ClientCnxnSocket {
     private static final Logger LOG = LoggerFactory.getLogger(ClientCnxnSocket.class);
 
+    /**
+     * 如果是初始为false，连接成功后置为true
+     */
     protected boolean initialized;
 
     /**
@@ -87,6 +90,10 @@ abstract class ClientCnxnSocket {
         now = Time.currentElapsedTime();
     }
 
+    /**
+     * 距离上次接受到的消息有多久,用该数据来查看是否与服务端断开
+     * @return
+     */
     int getIdleRecv() {
         return (int) (now - lastHeard);
     }
@@ -129,6 +136,10 @@ abstract class ClientCnxnSocket {
         incomingBuffer = ByteBuffer.allocate(len);
     }
 
+    /**
+     * 读取连接响应
+     * @throws IOException
+     */
     void readConnectResult() throws IOException {
         if (LOG.isTraceEnabled()) {
             StringBuilder buf = new StringBuilder("0x[");
@@ -155,6 +166,7 @@ abstract class ClientCnxnSocket {
         }
 
         this.sessionId = conRsp.getSessionId();
+        // 处理连接响应
         sendThread.onConnected(conRsp.getTimeOut(), this.sessionId,
                 conRsp.getPasswd(), isRO);
     }
@@ -213,6 +225,7 @@ abstract class ClientCnxnSocket {
      * - update relevant timestamp.
      *
      * @param waitTimeOut timeout in blocking wait. Unit in MilliSecond.
+     *                    时间可能是连接超时时间或者 下次发ping的时间
      * @param pendingQueue These are the packets that have been sent and
      *                     are waiting for a response.
      * @param cnxn

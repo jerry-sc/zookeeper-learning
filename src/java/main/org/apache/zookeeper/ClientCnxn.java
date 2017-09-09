@@ -145,11 +145,20 @@ public class ClientCnxn {
      * "real" timeout, not the timeout request by the client (which may have
      * been increased/decreased by the server which applies bounds to this
      * value.
+     * 真正的超时时间
      */
     private volatile int negotiatedSessionTimeout;
 
     private int readTimeout;
 
+    /**
+     * 关于timeout参数：
+     * 客户端在构造zookeeper实例的时候，会配置一个sessionTimeout参数用于指定会话的超时时间。zookeeper客户端向
+     * 服务端发送这个超时时间后，服务器会根据自己的超时时间限制最终确定会话的超时时间。
+     *
+     * 上面的negotiatedSessionTimeout才是真正的超时时间，初始的timeout时间只用于建立连接的时候
+     *
+     */
     private final int sessionTimeout;
 
     private final ZooKeeper zooKeeper;
@@ -445,6 +454,7 @@ public class ClientCnxn {
      * 事件处理线程
      */
     class EventThread extends ZooKeeperThread {
+        // 阻塞队列
         private final LinkedBlockingQueue<Object> waitingEvents =
                 new LinkedBlockingQueue<Object>();
 
@@ -483,6 +493,7 @@ public class ClientCnxn {
                 watchers = new HashSet<Watcher>();
                 watchers.addAll(materializedWatchers);
             }
+            // 将watcher set 与 该事件绑定，然后传入事件处理线程，等待处理
             WatcherSetEventPair pair = new WatcherSetEventPair(watchers, event);
             // queue the pair (watch set & event) for later processing
             waitingEvents.add(pair);
@@ -720,6 +731,9 @@ public class ClientCnxn {
             }
         }
 
+        /**
+         * 重要：说明响应已经处理完毕，唤醒阻塞的主线程
+         */
         if (p.cb == null) {
             synchronized (p) {
                 p.finished = true;
@@ -828,6 +842,9 @@ public class ClientCnxn {
             ReplyHeader replyHdr = new ReplyHeader();
 
             replyHdr.deserialize(bbia, "header");
+            /**
+             * 如果是ping的响应
+             */
             if (replyHdr.getXid() == -2) {
                 // -2 is the xid for pings
                 if (LOG.isDebugEnabled()) {
@@ -853,7 +870,7 @@ public class ClientCnxn {
                 return;
             }
             /**
-             * -1 代表 通知
+             * -1 代表客户端监听的事件发生，请求回调，是服务端在事件发生后在任意事件发送的，不想其他请求那样，及时回复
              */
             if (replyHdr.getXid() == -1) {
                 // -1 means notification
@@ -886,6 +903,7 @@ public class ClientCnxn {
                             + Long.toHexString(sessionId));
                 }
 
+                // 加入事件处理队列，等待处理
                 eventThread.queueEvent(we);
                 return;
             }
@@ -910,6 +928,7 @@ public class ClientCnxn {
                 packet = pendingQueue.remove();
             }
             /*
+             * 确保请求顺序与响应顺序一致，否则报错
              * Since requests are processed in order, we better get a response
              * to the first request!
              */
@@ -926,6 +945,7 @@ public class ClientCnxn {
                             + packet);
                 }
 
+                // 可见服务端返回的是一个新对象，这里需要拷贝传递
                 packet.replyHeader.setXid(replyHdr.getXid());
                 packet.replyHeader.setErr(replyHdr.getErr());
                 packet.replyHeader.setZxid(replyHdr.getZxid());
@@ -1066,6 +1086,9 @@ public class ClientCnxn {
             return paths;
         }
 
+        /**
+         * 注意ping的请求头中的xid为-2
+         */
         private void sendPing() {
             lastPingSentNs = System.nanoTime();
             RequestHeader h = new RequestHeader(-2, OpCode.ping);
@@ -1211,7 +1234,7 @@ public class ClientCnxn {
                         to = connectTimeout - clientCnxnSocket.getIdleRecv();
                     }
 
-                    // 连接超时, 则会从Host列表中找下一个host进行重新建立连接
+                    // 连接超时, 则会从Host列表中找下一个host进行重新建立连接,并清空当前的环境,重新开始连接
                     if (to <= 0) {
                         String warnInfo;
                         warnInfo = "Client session timed out, have not heard from server in "
@@ -1222,9 +1245,14 @@ public class ClientCnxn {
                         LOG.warn(warnInfo);
                         throw new SessionTimeoutException(warnInfo);
                     }
+                    // 如果长时间没有发送请求，发送ping请求来确认是否断开连接，注意这里计算的是距离上次发送的时间，不是接受事件，
+                    // ping只对发送有关
                     if (state.isConnected()) {
                         //1000(1 second) is to prevent race condition missing to send the second ping
                         //also make sure not to send too many pings when readTimeout is small
+
+                        // readTimeout / 2 即表示在三分之一sessionTimeout内如果没有和服务器进行过通信，则需要发送ping
+                        // MAX_SEND_PING_INTERVAL 也默认为三分之一的sessionTimeout
                         int timeToNextPing = readTimeout / 2 - clientCnxnSocket.getIdleSend() -
                                 ((clientCnxnSocket.getIdleSend() > 1000) ? 1000 : 0);
                         //send a ping request either time is due or no packet sent out within MAX_SEND_PING_INTERVAL
@@ -1392,6 +1420,10 @@ public class ClientCnxn {
          * Callback invoked by the ClientCnxnSocket once a connection has been
          * established.
          *
+         * 关于timeout参数：
+         * 客户端在构造zookeeper实例的时候，会配置一个sessionTimeout参数用于指定会话的超时时间。zookeeper客户端向
+         * 服务端发送这个超时时间后，服务器会根据自己的超时时间限制最终确定会话的超时时间。
+         *
          * @param _negotiatedSessionTimeout
          * @param _sessionId
          * @param _sessionPasswd
@@ -1432,6 +1464,7 @@ public class ClientCnxn {
                     + ", sessionid = 0x" + Long.toHexString(sessionId)
                     + ", negotiated timeout = " + negotiatedSessionTimeout
                     + (isRO ? " (READ-ONLY mode)" : ""));
+            // 构建连接成功事件
             KeeperState eventState = (isRO) ?
                     KeeperState.ConnectedReadOnly : KeeperState.SyncConnected;
             eventThread.queueEvent(new WatchedEvent(
@@ -1543,6 +1576,8 @@ public class ClientCnxn {
         ReplyHeader r = new ReplyHeader();
         Packet packet = queuePacket(h, r, request, response, null, null, null,
                 null, watchRegistration, watchDeregistration);
+        // 主线程会在这里阻塞，直到收到响应, 将packet放到发送队列中区后，当sendThread线程发送就绪后，会将packet发送，收到响应后
+        // 会通知这里
         synchronized (packet) {
             while (!packet.finished) {
                 packet.wait();
@@ -1575,6 +1610,7 @@ public class ClientCnxn {
     /**
      * Zookeeper中 ，Packet 可以被看做是一个最小的通信协议单元，用于进行客户端与服务端之间的网络传输，任何需要传输的对象都需要包装
      * 成一个Packet对象
+     *
      * @param h
      * @param r
      * @param request
