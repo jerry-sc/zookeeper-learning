@@ -34,10 +34,17 @@ import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
  * 
  */
 public class QuorumMaj implements QuorumVerifier {
+    /**
+     * 以下三个集合用来记录每一个节点的类型
+     */
     private Map<Long, QuorumServer> allMembers = new HashMap<Long, QuorumServer>();
     private HashMap<Long, QuorumServer> votingMembers = new HashMap<Long, QuorumServer>();
     private HashMap<Long, QuorumServer> observingMembers = new HashMap<Long, QuorumServer>();
     private long version = 0;
+
+    /**
+     * 并非指所有节点的半数，而是指能够投票节点的半数
+     */
     private int half;
 
     public int hashCode() {

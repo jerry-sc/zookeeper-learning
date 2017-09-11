@@ -92,6 +92,9 @@ public class FileTxnLog implements TxnLog {
 
     static long preAllocSize =  65536 * 1024;
 
+    /**
+     * 起始分隔符
+     */
     public final static int TXNLOG_MAGIC =
         ByteBuffer.wrap("ZKLG".getBytes()).getInt();
 

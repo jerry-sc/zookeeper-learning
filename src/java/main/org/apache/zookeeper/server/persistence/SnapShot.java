@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.zookeeper.server.DataTree;
 
 /**
+ * 快照文件操作接口
  * snapshot interface for the persistence layer.
  * implement this interface for implementing 
  * snapshots.

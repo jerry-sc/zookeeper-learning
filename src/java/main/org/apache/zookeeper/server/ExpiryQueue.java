@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.zookeeper.common.Time;
 
 /**
+ * 在session管理中有一个分桶管理的机制，所有超时的session会放入该队列，然后NIO中连接超时线程会检查该队列,终止连接
  * ExpiryQueue tracks elements in time sorted fixed duration buckets.
  * It's used by SessionTrackerImpl to expire sessions and NIOServerCnxnFactory
  * to expire connections.
@@ -45,6 +46,9 @@ public class ExpiryQueue<E> {
     private final ConcurrentHashMap<Long, Set<E>> expiryMap =
         new ConcurrentHashMap<Long, Set<E>>();
 
+    /**
+     * 下次超时的时间
+     */
     private final AtomicLong nextExpirationTime = new AtomicLong();
     private final int expirationInterval;
 

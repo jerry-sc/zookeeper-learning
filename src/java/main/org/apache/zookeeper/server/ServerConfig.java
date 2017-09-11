@@ -27,6 +27,8 @@ import org.apache.zookeeper.server.quorum.QuorumPeerConfig;
 import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 
 /**
+ *
+ * 单机版配置，是{@link QuorumPeerConfig} 的简化版
  * Server configuration storage.
  *
  * We use this instead of Properties as it's typed.
@@ -50,6 +52,9 @@ public class ServerConfig {
     protected int maxSessionTimeout = -1;
 
     /**
+     * 因为单机版有两种启动方式：
+     * 1. 可以直接通过{@link ZooKeeperServerMain}来启动，就使用这个方法，即控制台提供的参数来启动
+     * 2. 通过{@link org.apache.zookeeper.server.quorum.QuorumPeerMain} 来启动，那么需要解析配置文件
      * Parse arguments for server configuration
      * @param args clientPort dataDir and optional tickTime and maxClientCnxns
      * @return ServerConfig configured wrt arguments
@@ -72,6 +77,7 @@ public class ServerConfig {
     }
 
     /**
+     * 从配置文件加载配置
      * Parse a ZooKeeper configuration file
      * @param path the patch of the configuration file
      * @return ServerConfig configured wrt arguments
@@ -87,6 +93,7 @@ public class ServerConfig {
     }
 
     /**
+     * 相当于copy过来
      * Read attributes from a QuorumPeerConfig.
      * @param config
      */

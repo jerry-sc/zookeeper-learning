@@ -24,6 +24,7 @@ import org.apache.jute.Record;
 import org.apache.zookeeper.txn.TxnHeader;
 
 /**
+ * 提供了事务日志读取接口
  * Interface for reading transaction logs.
  *
  */

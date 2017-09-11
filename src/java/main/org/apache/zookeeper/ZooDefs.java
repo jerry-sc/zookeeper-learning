@@ -87,6 +87,9 @@ public class ZooDefs {
         public final int error = -1;
     }
 
+    /**
+     * 拥有的权限
+     */
     @InterfaceAudience.Public
     public interface Perms {
         int READ = 1 << 0;
@@ -97,6 +100,9 @@ public class ZooDefs {
 
         int DELETE = 1 << 3;
 
+        /**
+         * 管理员权限
+         */
         int ADMIN = 1 << 4;
 
         int ALL = READ | WRITE | CREATE | DELETE | ADMIN;

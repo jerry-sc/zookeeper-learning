@@ -27,6 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 历史文件清理器，从3.4.0版本开始，zookeeper增加了自动清理历史数据文件的机制，对事务日志以及快照数据进行定时清理
+ * 内部包含了一个定时器，定时执行.
+ * snapRetainCount 和 purgeInterval 需要配合执行，如果purgeInterval等于0或者负数，，表示不开启自动清理，默认不开启
  * This class manages the cleanup of snapshots and corresponding transaction
  * logs by scheduling the auto purge task with the specified
  * 'autopurge.purgeInterval'. It keeps the most recent
@@ -52,6 +55,9 @@ public class DatadirCleanupManager {
 
     private final int snapRetainCount;
 
+    /**
+     * 单位小时
+     */
     private final int purgeInterval;
 
     private Timer timer;

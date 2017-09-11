@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -71,6 +71,7 @@ public class QuorumPeerMain {
     protected QuorumPeer quorumPeer;
 
     /**
+     * 无论是单机版还是集群版，统一启动类，会解析zoo.cfg来判断是哪个版本
      * To start the replicated server specify the configuration file name on
      * the command line.
      * @param args path to the configfile
@@ -105,91 +106,106 @@ public class QuorumPeerMain {
     }
 
     protected void initializeAndRun(String[] args)
-        throws ConfigException, IOException, AdminServerException
-    {
+            throws ConfigException, IOException, AdminServerException {
+
+        /**
+         * 加载配置文件，进行参数初始化
+         */
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
             config.parse(args[0]);
         }
 
+        /**
+         * 启动清理器
+         */
         // Start and schedule the the purge task
         DatadirCleanupManager purgeMgr = new DatadirCleanupManager(config
                 .getDataDir(), config.getDataLogDir(), config
                 .getSnapRetainCount(), config.getPurgeInterval());
         purgeMgr.start();
 
+        /**
+         * 分布式启动方式
+         */
         if (args.length == 1 && config.isDistributed()) {
             runFromConfig(config);
         } else {
             LOG.warn("Either no config or no quorum defined in config, running "
                     + " in standalone mode");
             // there is only server in the quorum -- run as standalone
+            // 单机启动
             ZooKeeperServerMain.main(args);
         }
     }
 
+    /**
+     * 集群启动方式
+     * @param config
+     * @throws IOException
+     * @throws AdminServerException
+     */
     public void runFromConfig(QuorumPeerConfig config)
-            throws IOException, AdminServerException
-    {
-      try {
-          ManagedUtil.registerLog4jMBeans();
-      } catch (JMException e) {
-          LOG.warn("Unable to register log4j JMX control", e);
-      }
+            throws IOException, AdminServerException {
+        try {
+            ManagedUtil.registerLog4jMBeans();
+        } catch (JMException e) {
+            LOG.warn("Unable to register log4j JMX control", e);
+        }
 
-      LOG.info("Starting quorum peer");
-      try {
-          ServerCnxnFactory cnxnFactory = null;
-          ServerCnxnFactory secureCnxnFactory = null;
+        LOG.info("Starting quorum peer");
+        try {
+            ServerCnxnFactory cnxnFactory = null;
+            ServerCnxnFactory secureCnxnFactory = null;
 
-          if (config.getClientPortAddress() != null) {
-              cnxnFactory = ServerCnxnFactory.createFactory();
-              cnxnFactory.configure(config.getClientPortAddress(),
-                      config.getMaxClientCnxns(),
-                      false);
-          }
+            if (config.getClientPortAddress() != null) {
+                cnxnFactory = ServerCnxnFactory.createFactory();
+                cnxnFactory.configure(config.getClientPortAddress(),
+                        config.getMaxClientCnxns(),
+                        false);
+            }
 
-          if (config.getSecureClientPortAddress() != null) {
-              secureCnxnFactory = ServerCnxnFactory.createFactory();
-              secureCnxnFactory.configure(config.getSecureClientPortAddress(),
-                      config.getMaxClientCnxns(),
-                      true);
-          }
+            if (config.getSecureClientPortAddress() != null) {
+                secureCnxnFactory = ServerCnxnFactory.createFactory();
+                secureCnxnFactory.configure(config.getSecureClientPortAddress(),
+                        config.getMaxClientCnxns(),
+                        true);
+            }
 
-          quorumPeer = getQuorumPeer();
-          quorumPeer.setTxnFactory(new FileTxnSnapLog(
-                      config.getDataLogDir(),
-                      config.getDataDir()));
-          quorumPeer.enableLocalSessions(config.areLocalSessionsEnabled());
-          quorumPeer.enableLocalSessionsUpgrading(
-              config.isLocalSessionsUpgradingEnabled());
-          //quorumPeer.setQuorumPeers(config.getAllMembers());
-          quorumPeer.setElectionType(config.getElectionAlg());
-          quorumPeer.setMyid(config.getServerId());
-          quorumPeer.setTickTime(config.getTickTime());
-          quorumPeer.setMinSessionTimeout(config.getMinSessionTimeout());
-          quorumPeer.setMaxSessionTimeout(config.getMaxSessionTimeout());
-          quorumPeer.setInitLimit(config.getInitLimit());
-          quorumPeer.setSyncLimit(config.getSyncLimit());
-          quorumPeer.setConfigFileName(config.getConfigFilename());
-          quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
-          quorumPeer.setQuorumVerifier(config.getQuorumVerifier(), false);
-          if (config.getLastSeenQuorumVerifier()!=null) {
-              quorumPeer.setLastSeenQuorumVerifier(config.getLastSeenQuorumVerifier(), false);
-          }
-          quorumPeer.initConfigInZKDatabase();
-          quorumPeer.setCnxnFactory(cnxnFactory);
-          quorumPeer.setSecureCnxnFactory(secureCnxnFactory);
-          quorumPeer.setLearnerType(config.getPeerType());
-          quorumPeer.setSyncEnabled(config.getSyncEnabled());
-          quorumPeer.setQuorumListenOnAllIPs(config.getQuorumListenOnAllIPs());
-          
-          quorumPeer.start();
-          quorumPeer.join();
-      } catch (InterruptedException e) {
-          // warn, but generally this is ok
-          LOG.warn("Quorum Peer interrupted", e);
-      }
+            quorumPeer = getQuorumPeer();
+            quorumPeer.setTxnFactory(new FileTxnSnapLog(
+                    config.getDataLogDir(),
+                    config.getDataDir()));
+            quorumPeer.enableLocalSessions(config.areLocalSessionsEnabled());
+            quorumPeer.enableLocalSessionsUpgrading(
+                    config.isLocalSessionsUpgradingEnabled());
+            //quorumPeer.setQuorumPeers(config.getAllMembers());
+            quorumPeer.setElectionType(config.getElectionAlg());
+            quorumPeer.setMyid(config.getServerId());
+            quorumPeer.setTickTime(config.getTickTime());
+            quorumPeer.setMinSessionTimeout(config.getMinSessionTimeout());
+            quorumPeer.setMaxSessionTimeout(config.getMaxSessionTimeout());
+            quorumPeer.setInitLimit(config.getInitLimit());
+            quorumPeer.setSyncLimit(config.getSyncLimit());
+            quorumPeer.setConfigFileName(config.getConfigFilename());
+            quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
+            quorumPeer.setQuorumVerifier(config.getQuorumVerifier(), false);
+            if (config.getLastSeenQuorumVerifier() != null) {
+                quorumPeer.setLastSeenQuorumVerifier(config.getLastSeenQuorumVerifier(), false);
+            }
+            quorumPeer.initConfigInZKDatabase();
+            quorumPeer.setCnxnFactory(cnxnFactory);
+            quorumPeer.setSecureCnxnFactory(secureCnxnFactory);
+            quorumPeer.setLearnerType(config.getPeerType());
+            quorumPeer.setSyncEnabled(config.getSyncEnabled());
+            quorumPeer.setQuorumListenOnAllIPs(config.getQuorumListenOnAllIPs());
+
+            quorumPeer.start();
+            quorumPeer.join();
+        } catch (InterruptedException e) {
+            // warn, but generally this is ok
+            LOG.warn("Quorum Peer interrupted", e);
+        }
     }
 
     // @VisibleForTesting

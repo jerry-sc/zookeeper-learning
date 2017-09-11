@@ -40,6 +40,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 该类是zookeeper上层服务器和底层数据存储之间的对阶层，提供了一系列操作数据文件的接口，包括事务日志文件和快照数据文件
+ * 具体哪种操作，调用具体实现类
  * This is a helper class
  * above the implementations
  * of txnlog and snapshot
@@ -70,6 +72,8 @@ public class FileTxnSnapLog {
     private static final String ZOOKEEPER_DB_AUTOCREATE_DEFAULT = "true";
 
     /**
+     * 事务应用监听器，用于在事务过程中的回调：每当成功将一条事务日志应用到内存数据库中后，就会调用这个监听器，
+     * 通常在实现中，会再将这些事务转存到committedLog中，以便集群中的服务器间进行快速的数据同步
      * This listener helps
      * the external apis calling
      * restore to gather information
@@ -81,10 +85,11 @@ public class FileTxnSnapLog {
     }
 
     /**
+     * 检查并确保目录存在
      * the constructor which takes the datadir and
      * snapdir.
-     * @param dataDir the transaction directory
-     * @param snapDir the snapshot directory
+     * @param dataDir the transaction directoryn 事务日志目录
+     * @param snapDir the snapshot directory 快照目录
      */
     public FileTxnSnapLog(File dataDir, File snapDir) throws IOException {
         LOG.debug("Opening datadir:{} snapDir:{}", dataDir, snapDir);
@@ -112,6 +117,7 @@ public class FileTxnSnapLog {
                         + this.dataDir);
             }
         }
+        // 检测写权限
         if (!this.dataDir.canWrite()) {
             throw new DatadirException("Cannot write to data directory " + this.dataDir);
         }
@@ -162,6 +168,9 @@ public class FileTxnSnapLog {
     }
 
     /**
+     * 从本地的快照文件与日志文件中恢复.
+     * 先解析恢复快照数据，再事务日志。
+     * 事务日志是快照数据的补充。
      * this function restores the server
      * database after reading from the
      * snapshots and transaction logs
@@ -174,6 +183,7 @@ public class FileTxnSnapLog {
      */
     public long restore(DataTree dt, Map<Long, Integer> sessions,
             PlayBackListener listener) throws IOException {
+        // 先解析快照文件, 找到上一次最大的提交的事务ID
         long deserializeResult = snapLog.deserialize(dt, sessions);
         FileTxnLog txnLog = new FileTxnLog(dataDir);
         boolean trustEmptyDB;

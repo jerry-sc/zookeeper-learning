@@ -23,6 +23,7 @@ package org.apache.zookeeper.server;
 public interface ZooKeeperServerListener {
 
     /**
+     * 处理重要事件，通常是致命错误
      * This will notify the server that some critical thread has stopped.
      * It usually takes place when fatal error occurred.
      *

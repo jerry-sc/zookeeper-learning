@@ -58,6 +58,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 该类维护zookeeper服务端的内存数据库，包括管理session状态，datatree，事务日志
+ *
+ * 每次启动的时候会通过磁盘上的事务日志和快照数据文件恢复成一个完成的内存数据库
  * This class maintains the in memory database of zookeeper
  * server states that includes the sessions, datatree and the
  * committed logs. It is booted up  after reading the logs
@@ -233,6 +236,7 @@ public class ZKDatabase {
      * @throws IOException
      */
     public long loadDataBase() throws IOException {
+        // 对于每一条事务修订，回调用于集群数据同步
         PlayBackListener listener=new PlayBackListener(){
             public void onTxnLoaded(TxnHeader hdr,Record txn){
                 Request r = new Request(0, hdr.getCxid(),hdr.getType(), hdr, txn, hdr.getZxid());

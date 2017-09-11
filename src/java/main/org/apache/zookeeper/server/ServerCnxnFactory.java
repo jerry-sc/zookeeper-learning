@@ -40,6 +40,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+/**
+ * 首先会初始化一个Thread，作为整个ServerCnxnFactory的主线程，然后在初始化NIO或者Netty服务器。
+ * 此工厂类相当于根据配置文件提供正确的socket连接处理类
+ */
 public abstract class ServerCnxnFactory {
 
     public static final String ZOOKEEPER_SERVER_CNXN_FACTORY = "zookeeper.serverCnxnFactory";
@@ -76,6 +80,13 @@ public abstract class ServerCnxnFactory {
         configure(addr, maxcc, false);
     }
 
+    /**
+     * 由于服务端存在着多种线程，这里配置就是创建合适数量的线程
+     * @param addr
+     * @param maxcc
+     * @param secure
+     * @throws IOException
+     */
     public abstract void configure(InetSocketAddress addr, int maxcc, boolean secure)
             throws IOException;
 
@@ -164,6 +175,9 @@ public abstract class ServerCnxnFactory {
     private final ConcurrentHashMap<ServerCnxn, ConnectionBean> connectionBeans =
         new ConcurrentHashMap<ServerCnxn, ConnectionBean>();
 
+    /**
+     * 所有与客户端连接的集合
+     */
     // Connection set is relied on heavily by four letter commands
     // Construct a ConcurrentHashSet using a ConcurrentHashMap
     protected final Set<ServerCnxn> cnxns = Collections.newSetFromMap(

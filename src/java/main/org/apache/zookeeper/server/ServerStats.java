@@ -23,14 +23,27 @@ package org.apache.zookeeper.server;
 import org.apache.zookeeper.common.Time;
 
 /**
+ * 创建服务器统计器，包含最基本的运行时信息
  * Basic Server Statistics
  */
 public class ServerStats {
+    /**
+     * 从开始或是最近一次重置服务端统计信息之后的向客户端发送的响应包数量
+     */
     private long packetsSent;
+    /**
+     * 从开始或是最近一次重置服务端统计信息之后接受到的客户端的请求包次数
+     */
     private long packetsReceived;
+    /**
+     * 从开始或是最近一次重置服务端统计信息之后的请求处理的最大延时，最小延时，以及总延时
+     */
     private long maxLatency;
     private long minLatency = Long.MAX_VALUE;
     private long totalLatency = 0;
+    /**
+     * 处理的客户端请求总次数
+     */
     private long count = 0;
 
     private final Provider provider;

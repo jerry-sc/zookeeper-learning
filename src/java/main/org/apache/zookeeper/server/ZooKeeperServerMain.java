@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 单机版服务器启动类
  * This class starts and runs a standalone ZooKeeperServer.
  */
 @InterfaceAudience.Public
@@ -140,6 +141,7 @@ public class ZooKeeperServerMain {
             if (config.getClientPortAddress() != null) {
                 cnxnFactory = ServerCnxnFactory.createFactory();
                 cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), false);
+                // 启动所有线程
                 cnxnFactory.startup(zkServer);
                 // zkServer has been started. So we don't need to start it again in secureCnxnFactory.
                 needStartZKServer = false;
@@ -156,6 +158,9 @@ public class ZooKeeperServerMain {
             );
             containerManager.start();
 
+            /**
+             * 会一直阻塞于此，除非服务端发生致命错误，无法继续执行
+             */
             // Watch status of ZooKeeper server. It will do a graceful shutdown
             // if the server is not running or hits an internal error.
             shutdownLatch.await();

@@ -72,6 +72,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
+ * 单机版zookeeper服务端最为核心的实体类
  * This class implements a simple standalone ZooKeeperServer. It sets up the
  * following chain of RequestProcessors to process requests:
  * PrepRequestProcessor -> SyncRequestProcessor -> FinalRequestProcessor
@@ -255,6 +256,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     /**
+     *  恢复本地数据
      *  Restore sessions and data
      */
     public void loadData() throws IOException, InterruptedException {
@@ -441,6 +443,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     throws IOException, InterruptedException {
         //check to see if zkDb is not null
         if (zkDb == null) {
+            // 创建完成后，内存数据库中只有一个根节点，还需要进一步恢复
             zkDb = new ZKDatabase(this.txnLogFactory);
         }
         if (!zkDb.isInitialized()) {

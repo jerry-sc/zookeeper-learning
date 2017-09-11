@@ -108,6 +108,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
      */
     private ZKDatabase zkDb;
 
+    /**
+     * 代表服务端的每一个节点
+     */
     public static class QuorumServer {
         public InetSocketAddress addr = null;
 

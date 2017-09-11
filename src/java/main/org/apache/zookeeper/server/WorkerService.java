@@ -210,6 +210,7 @@ public class WorkerService {
                         1, new DaemonThreadFactory(threadNamePrefix, i)));
                 }
             } else {
+                // 在线程池创建的过程中，使用自定义的线程创建工厂，因为我们想让每一个线程有自己特定的名字，并且想让每一个线程为后台线程
                 workers.add(Executors.newFixedThreadPool(
                     numWorkerThreads, new DaemonThreadFactory(threadNamePrefix)));
             }

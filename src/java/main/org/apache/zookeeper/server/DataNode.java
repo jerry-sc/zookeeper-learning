@@ -51,6 +51,7 @@ public class DataNode implements Record {
     public StatPersisted stat;
 
     /**
+     * 节点中的名称只有最后一部分的名称，为了加快序列化
      * the list of children for this node. note that the list of children string
      * does not contain the parent path -- just the last part of the path. This
      * should be synchronized on except deserializing (for speed up issues).

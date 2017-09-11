@@ -68,6 +68,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * 是一个非常纯净的类，职责非常明确，不与网络，连接等相关联
  * This class maintains the tree data structure. It doesn't have any networking
  * or client connection code in it so that it can be tested in a stand alone
  * way.
@@ -86,6 +87,9 @@ public class DataTree {
     private final ConcurrentHashMap<String, DataNode> nodes =
         new ConcurrentHashMap<String, DataNode>();
 
+    /**
+     * 在服务端一共维护了两个WatchManager，分别表示对数据变更的监控与对子节点变更的监控
+     */
     private final WatchManager dataWatches = new WatchManager();
 
     private final WatchManager childWatches = new WatchManager();
@@ -120,11 +124,13 @@ public class DataTree {
             .substring(procZookeeper.length() + 1);
 
     /**
+     * 在内存中维护一棵树，管理所有名称节点
      * the path trie that keeps track fo the quota nodes in this datatree
      */
     private final PathTrie pTrie = new PathTrie();
 
     /**
+     * 临时节点单独保存，便于处理
      * This hashtable lists the paths of the ephemeral nodes of a session.
      */
     private final Map<Long, HashSet<String>> ephemerals =
@@ -224,6 +230,10 @@ public class DataTree {
     private final DataNode quotaDataNode = new DataNode(new byte[0], -1L, new StatPersisted());
 
     public DataTree() {
+        /**
+         * 创建根节点，/zookeeper节点，/zookeeper/quota节点,
+         * 注意root节点有两个别名  "" 以及 /
+         */
         /* Rather than fight it, let root have an alias */
         nodes.put("", root);
         nodes.put(rootZookeeper, root);
@@ -235,6 +245,7 @@ public class DataTree {
         procDataNode.addChild(quotaChildZookeeper);
         nodes.put(quotaZookeeper, quotaDataNode);
 
+        // 创建 /zookeeper/config节点
         addConfigNode();
     }
 
@@ -1128,6 +1139,7 @@ public class DataTree {
     }
 
     /**
+     * 以层次遍历的顺序序列化每一个节点
      * this method uses a stringbuilder to create a new path for children. This
      * is faster than string appends ( str1 + str2).
      *
@@ -1170,7 +1182,9 @@ public class DataTree {
     }
 
     public void serialize(OutputArchive oa, String tag) throws IOException {
+        // 序列号ACL缓存
         aclCache.serialize(oa);
+        // 递归序列号树中节点
         serializeNode(oa, new StringBuilder(""));
         // / marks end of stream
         // we need to check if clear had been called in between the snapshot.

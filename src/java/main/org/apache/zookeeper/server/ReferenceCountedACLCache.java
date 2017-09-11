@@ -35,6 +35,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 缓存所有的权限集合
+ */
 public class ReferenceCountedACLCache {
     private static final Logger LOG = LoggerFactory.getLogger(ReferenceCountedACLCache.class);
 
@@ -44,6 +47,9 @@ public class ReferenceCountedACLCache {
     final Map<List<ACL>, Long> aclKeyMap =
             new HashMap<List<ACL>, Long>();
 
+    /**
+     * 为每一个缓存的ACL集合计数
+     */
     final Map<Long, AtomicLongWithEquals> referenceCounter =
             new HashMap<Long, AtomicLongWithEquals>();
     private static final long OPEN_UNSAFE_ACL_ID = -1L;

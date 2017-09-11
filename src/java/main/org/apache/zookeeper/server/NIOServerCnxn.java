@@ -52,6 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 具体处理与客户端的请求
  * This class handles communication with clients using NIO. There is one per
  * client, but only one thread doing the communication.
  */
@@ -75,6 +76,9 @@ public class NIOServerCnxn extends ServerCnxn {
     private final Queue<ByteBuffer> outgoingBuffers =
         new LinkedBlockingQueue<ByteBuffer>();
 
+    /**
+     * 客户端连接超时时间
+     */
     private int sessionTimeout;
 
     private final ZooKeeperServer zkServer;
@@ -108,9 +112,13 @@ public class NIOServerCnxn extends ServerCnxn {
         } else {
             outstandingLimit = 1;
         }
+        /**
+         * 所谓TCP NO DELAY 指，不会因为数据较少等待足够大数据再发送
+         */
         sock.socket().setTcpNoDelay(true);
         /* set socket linger to false, so that socket close does not block */
         sock.socket().setSoLinger(false, -1);
+        // 获得客户端地址
         InetAddress addr = ((InetSocketAddress) sock.socket()
                 .getRemoteSocketAddress()).getAddress();
         addAuthInfo(new Id("ip", addr.getHostAddress()));
