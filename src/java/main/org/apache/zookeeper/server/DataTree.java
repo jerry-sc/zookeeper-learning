@@ -130,7 +130,8 @@ public class DataTree {
     private final PathTrie pTrie = new PathTrie();
 
     /**
-     * 临时节点单独保存，便于处理
+     * 临时节点单独保存，便于会话过期的时候清除
+     * 每一个sessionId对应一个临时节点列表
      * This hashtable lists the paths of the ephemeral nodes of a session.
      */
     private final Map<Long, HashSet<String>> ephemerals =
@@ -598,6 +599,12 @@ public class DataTree {
                 EventType.NodeChildrenChanged);
     }
 
+    /**
+     * 首先注意的是：DataNode中保存的是可以持久化的Stat，而内存中使用的是Stat，两者相差几个字段，
+     * 所以在setData时，首先修改DataNode中的值，防止序列化到快照中丢失，然后将DataNode状态拷贝到内存使用的Stat，用于传输
+     *
+     * 最后触发数据修改的监听事件
+     */
     public Stat setData(String path, byte data[], int version, long zxid,
             long time) throws KeeperException.NoNodeException {
         Stat s = new Stat();
@@ -741,6 +748,9 @@ public class DataTree {
 
         public int err;
 
+        /**
+         * 对应操作的类型
+         */
         public int type;
 
         public String path;
@@ -777,6 +787,9 @@ public class DataTree {
 
     }
 
+    /**
+     * 每次处理一个事务都会+1，每次启动从快照与日志中加载，每处理一条记录也会相应的更新到最新的记录
+     */
     public volatile long lastProcessedZxid = 0;
 
     public ProcessTxnResult processTxn(TxnHeader header, Record txn)
@@ -1109,6 +1122,7 @@ public class DataTree {
             // this node does not have a child
             // is the leaf node
             // check if its the leaf node
+            // TODO 什么是限制节点
             String endString = "/" + Quotas.limitNode;
             if (path.endsWith(endString)) {
                 // ok this is the limit node
@@ -1239,7 +1253,7 @@ public class DataTree {
         // update the quotas - create path trie
         // and also update the stat nodes
         setupQuota();
-
+        // 缓存清理
         aclCache.purgeUnused();
     }
 

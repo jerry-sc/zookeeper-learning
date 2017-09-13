@@ -635,6 +635,10 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
      * 服务端用于判断客户端session过期的时间
      */
     int sessionlessCnxnTimeout;
+
+    /**
+     * 与session的管理类似，这里实现用了泛型，只是将session替换成了NIO连接，同样也采用分桶管理机制，定时清理超时连接.
+     */
     private ExpiryQueue<NIOServerCnxn> cnxnExpiryQueue;
 
 

@@ -95,9 +95,25 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     protected int minSessionTimeout = -1;
     /** value of -1 indicates unset, use default */
     protected int maxSessionTimeout = -1;
+
+    /**
+     * session管理器
+     */
     protected SessionTracker sessionTracker;
+
+    /**
+     * 快照与日志管理器
+     */
     private FileTxnSnapLog txnLogFactory = null;
+
+    /**
+     * 内存数据库
+     */
     private ZKDatabase zkDb;
+
+    /**
+     * 当前最高的事务ID
+     */
     private final AtomicLong hzxid = new AtomicLong(0);
     public final static Exception ok = new Exception("No prob");
     protected RequestProcessor firstProcessor;
@@ -282,6 +298,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             setZxid(zkDb.getDataTreeLastProcessedZxid());
         }
         else {
+            // 从快照与日志文件中恢复数据
             setZxid(zkDb.loadDataBase());
         }
         
@@ -366,6 +383,10 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         hzxid.set(zxid);
     }
 
+    /**
+     * 发起会话关闭器扭曲
+     * @param sessionId 会话ID
+     */
     private void close(long sessionId) {
         Request si = new Request(null, sessionId, 0, OpCode.closeSession, null, null);
         setLocalSessionFlag(si);
@@ -443,7 +464,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     throws IOException, InterruptedException {
         //check to see if zkDb is not null
         if (zkDb == null) {
-            // 创建完成后，内存数据库中只有一个根节点，还需要进一步恢复
+            // 创建完成后，内存数据库中只有基本的数据格式，需要进一步从快照以及事务日志中恢复
             zkDb = new ZKDatabase(this.txnLogFactory);
         }
         if (!zkDb.isInitialized()) {
@@ -453,17 +474,29 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
 
     public synchronized void startup() {
         if (sessionTracker == null) {
+            // 创建会话管理器
             createSessionTracker();
         }
+        // 启动会话管理器
         startSessionTracker();
+
+        // 初始化zookeeper的请求处理链
         setupRequestProcessors();
 
+        // 注册JMX服务，使得外部可以查看服务器运行信息
         registerJMX();
 
+        /**
+         * 之间只是初始化状态，只有运行状态才能接受客户端请求
+         */
         setState(State.RUNNING);
         notifyAll();
     }
 
+    /**
+     * zookeeper的请求处理方式是典型的责任链模式实现，在zookeeper服务器上，会有多个请求处理器依次来处理一个客户度请求，
+     * 在服务器启动的时候，会将这些串联起来形成一个链
+     */
     protected void setupRequestProcessors() {
         RequestProcessor finalProcessor = new FinalRequestProcessor(this);
         RequestProcessor syncProcessor = new SyncRequestProcessor(this,
@@ -487,6 +520,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     /**
+     * 每次状态改变都会调用该方法，如果出现严重错误，则会调用CountDownLatch，停止阻塞，结束程序
      * Sets the state of ZooKeeper server. After changing the state, it notifies
      * the server state change to a registered shutdown handler, if any.
      * <p>

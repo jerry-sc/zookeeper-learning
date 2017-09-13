@@ -64,6 +64,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 非常重要的一个类，相当于服务节点管理的类
+ * 从集群层面上看，该类代表了zookeeper集群中的一台机器。在运行期间，会不断检测当前服务器运行状态，
+ * 同时根据情况发起选举等。
+ *
+ * 有三种状态：1）选举状态；Looking 2）Follower：会同步与leader之间的事务; 3)Leader: 处理事务请求并发送给follower
+ * 只有半数以上接收，才认为该事务被接受
+ *
  * This class manages the quorum protocol. There are three states this server
  * can be in:
  * <ol>
@@ -285,6 +292,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             }
         }
 
+        /**
+         * 打印该服务器配置的ip，端口信息
+         * @return
+         */
         public String toString(){
             StringWriter sw = new StringWriter();
             //addr should never be null, but just to make sure
@@ -724,6 +735,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         super("QuorumPeer");
         quorumStats = new QuorumStats(this);
         jmxRemotePeerBean = new HashMap<Long, RemotePeerBean>();
+
+        // Jetty管理
         adminServer = AdminServerFactory.createAdminServer();
     }
 
@@ -731,7 +744,6 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     /**
      * For backward compatibility purposes, we instantiate QuorumMaj by default.
      */
-
     public QuorumPeer(Map<Long, QuorumServer> quorumPeers, File dataDir,
             File dataLogDir, int electionType,
             long myid, int tickTime, int initLimit, int syncLimit,
@@ -772,6 +784,8 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             throw new RuntimeException("My id " + myid + " not in the peer list");
          }
         loadDataBase();
+
+
         startServerCnxnFactory();
         try {
             adminServer.start();
@@ -779,12 +793,14 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             LOG.warn("Problem starting AdminServer", e);
             System.out.println(e);
         }
+        // 开始选举
         startLeaderElection();
         super.start();
     }
 
     private void loadDataBase() {
         try {
+            // 从快照文件日志文件中恢复数据到内存数据库中
             zkDb.loadDataBase();
 
             // load the epochs
@@ -1701,7 +1717,11 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         }
     }
 
+
     private long acceptedEpoch = -1;
+    /**
+     * 现在所处的年代，启动时，会从配置文件中加载，然后继续运行
+     */
     private long currentEpoch = -1;
 
     public static final String CURRENT_EPOCH_FILENAME = "currentEpoch";

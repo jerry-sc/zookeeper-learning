@@ -183,7 +183,7 @@ public class FileTxnSnapLog {
      */
     public long restore(DataTree dt, Map<Long, Integer> sessions,
             PlayBackListener listener) throws IOException {
-        // 先解析快照文件, 找到上一次最大的提交的事务ID
+        // 先解析快照文件, 找到上一次最大的提交的事务ID, 即在本地目录中的snapshot-NUM中的NUM值
         long deserializeResult = snapLog.deserialize(dt, sessions);
         FileTxnLog txnLog = new FileTxnLog(dataDir);
         boolean trustEmptyDB;
@@ -195,6 +195,7 @@ public class FileTxnSnapLog {
             trustEmptyDB = autoCreateDB;
         }
         if (-1L == deserializeResult) {
+            // 在没有镜像文件的情况下，但是有日志文件是错误情况
             /* this means that we couldn't find any snapshot, so we need to
              * initialize an empty database (reported in ZOOKEEPER-2325) */
             if (txnLog.getLastLoggedZxid() != -1) {
@@ -204,6 +205,7 @@ public class FileTxnSnapLog {
             }
 
             if (trustEmptyDB) {
+                // 第一次，如果还没有创建镜像文件，那么创建
                 /* TODO: (br33d) we should either put a ConcurrentHashMap on restore()
                  *       or use Map on save() */
                 save(dt, (ConcurrentHashMap<Long, Integer>)sessions, false);
@@ -217,6 +219,7 @@ public class FileTxnSnapLog {
                 return -1L;
             }
         }
+        // 建立日志文件读取链表，从第一个大于镜像文件事务ID的文件开始，从里面一条条记录开始读取
         TxnIterator itr = txnLog.read(dt.lastProcessedZxid+1);
         long highestZxid = dt.lastProcessedZxid;
         TxnHeader hdr;
@@ -341,6 +344,7 @@ public class FileTxnSnapLog {
     }
 
     /**
+     * 保存当前的镜像文件
      * save the datatree and the sessions into a snapshot
      * @param dataTree the datatree to be serialized onto disk
      * @param sessionsWithTimeouts the session timeouts to be

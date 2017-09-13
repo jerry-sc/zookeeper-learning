@@ -39,8 +39,16 @@ public interface SessionTracker {
     public static interface Session {
         long getSessionId();
         int getTimeout();
+
+        /**
+         * 当服务器检测到一个会话已经超时失效，将该标记为true，这样就能确保不再处理来自该会话的新请求了
+         */
         boolean isClosing();
     }
+
+    /**
+     * {@link ZooKeeperServer} 实现了该接口
+     */
     public static interface SessionExpirer {
         void expire(Session session);
 

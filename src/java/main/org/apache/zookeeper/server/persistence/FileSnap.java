@@ -45,6 +45,9 @@ import org.apache.zookeeper.server.DataTree;
 import org.apache.zookeeper.server.util.SerializeUtils;
 
 /**
+ * 关于快照文件的命名：snapshot.ZXID 该zxid是当前已经提交的最大ZXID来生成的文件名，注意与日志文件命名的方式。
+ * 这样做的目的是为了数据恢复
+ *
  * 快照的数据格式如下：
  *
  * FileHeader + sessiontimeouts + aclCache + dataTree + val + path
@@ -53,7 +56,7 @@ import org.apache.zookeeper.server.util.SerializeUtils;
  * FileHeader: magic + version + dbid
  * sessiontimeouts: count + <id, timeout> + ... + ...
  * aclCache: mapSize + <long,list<acl>> + ... + ...
- * dataTree: path + node    所有节点 + /
+ * dataTree: path + node    所有节点 + /（结尾分隔符）
  * val: checksum
  * path: /
  *
@@ -103,6 +106,7 @@ public class FileSnap implements SnapShot {
                 if (val != checkSum) {
                     throw new IOException("CRC corruption in snapshot :  " + snap);
                 }
+                // 找到一个有效即停止
                 foundValid = true;
                 break;
             } catch (IOException e) {
@@ -112,6 +116,7 @@ public class FileSnap implements SnapShot {
         if (!foundValid) {
             throw new IOException("Not able to find valid snapshots in " + snapDir);
         }
+        // 根据快照文件名的ID更新当前最新的内存数据库中的事务，该事务ID未必是最新的，之后在事务日志文件中解析，再更新
         dt.lastProcessedZxid = Util.getZxidFromName(snap.getName(), "snapshot");
         return dt.lastProcessedZxid;
     }
@@ -233,7 +238,7 @@ public class FileSnap implements SnapShot {
      * @param dt the datatree to be serialized
      * @param sessions the sessions to be serialized
      * @param snapShot the file to store snapshot into
-     * @param fsync sync the file immediately after write 是否立即同步到硬盘中去
+     * @param fsync sync the file immediately after write 是否立即同步到硬盘中去，耗时操作
      */
     public synchronized void serialize(DataTree dt, Map<Long, Integer> sessions, File snapShot, boolean fsync)
             throws IOException {

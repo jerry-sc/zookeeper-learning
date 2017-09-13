@@ -46,6 +46,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 关于事务日志文件的命名：log.ZXID 该zxid是写入该事务日志文件第一条记录的zxid
+ *
  * This class implements the TxnLog interface. It provides api's
  * to access the txnlogs and add entries to it.
  * <p>
@@ -90,6 +92,11 @@ import org.slf4j.LoggerFactory;
 public class FileTxnLog implements TxnLog {
     private static final Logger LOG;
 
+    /**
+     * 由于客户端的每一次事务操作，都要将其写入事务日志中，因此事务日志写入性能会影响服务器对客户端响应。
+     * 也就是说事务写入近似可以被看作是一个磁盘IO的过程。通常情况下，文件的不断追加操作会触发底层IO为文件开辟新的
+     * 磁盘块，这样效率会很低，因此采用预分配提高效率。默认预分配64M
+     */
     static long preAllocSize =  65536 * 1024;
 
     /**
@@ -126,9 +133,20 @@ public class FileTxnLog implements TxnLog {
     volatile OutputArchive oa;
     volatile FileOutputStream fos = null;
 
+    /**
+     * 日志目录
+     */
     File logDir;
+
+    /**
+     * 是否需要强制刷入磁盘，效率较低
+     */
     private final boolean forceSync = !System.getProperty("zookeeper.forceSync", "yes").equals("no");
     long dbId;
+
+    /**
+     * 是zookeeper用来记录当前需要强制进行数据落盘的文件流
+     */
     private LinkedList<FileOutputStream> streamsToFlush =
         new LinkedList<FileOutputStream>();
     long currentSize;
@@ -535,7 +553,13 @@ public class FileTxnLog implements TxnLog {
     public static class FileTxnIterator implements TxnLog.TxnIterator {
         File logDir;
         long zxid;
+        /**
+         * 事务记录头
+         */
         TxnHeader hdr;
+        /**
+         * 事务记录主体
+         */
         Record record;
         File logFile;
         InputArchive ia;
@@ -560,8 +584,11 @@ public class FileTxnLog implements TxnLog {
                 throws IOException {
             this.logDir = logDir;
             this.zxid = zxid;
+
+            // 将所有的日志文件连在一起，之后调用next方法就可以访问给定zxid之后所有的记录
             init();
 
+            // 找到第一条和给定事务ID相同的事务, 使得快照事务ID与日志记录ID一致
             if (fastForward && hdr != null) {
                 while (hdr.getZxid() < zxid) {
                     if (!next())
@@ -581,6 +608,7 @@ public class FileTxnLog implements TxnLog {
         }
 
         /**
+         * 找出所有比现有zxid大的日志文件
          * initialize to the zxid specified
          * this is inclusive of the zxid
          * @throws IOException
@@ -614,6 +642,7 @@ public class FileTxnLog implements TxnLog {
         }
 
         /**
+         * 访问下一个日志文件，注意文件与事务日志记录的区别
          * go to the next logfile
          * @return true if there is one and false if there is no
          * new file to be read
@@ -629,6 +658,7 @@ public class FileTxnLog implements TxnLog {
         }
 
         /**
+         * 读取日志头
          * read the header from the inputarchive
          * @param ia the inputarchive to be read from
          * @param is the inputstream
@@ -647,8 +677,6 @@ public class FileTxnLog implements TxnLog {
 
         /**
          * Invoked to indicate that the input stream has been created.
-         * @param ia input archive
-         * @param is file input stream associated with the input archive.
          * @throws IOException
          **/
         protected InputArchive createInputArchive(File logFile) throws IOException {
@@ -671,6 +699,7 @@ public class FileTxnLog implements TxnLog {
         }
 
         /**
+         * 获取下一条事务日志记录
          * the iterator that moves to the next transaction
          * @return true if there is more transactions to be read
          * false if not.
@@ -680,21 +709,26 @@ public class FileTxnLog implements TxnLog {
                 return false;
             }
             try {
+                // 首先是一条事务日志记录的校验值，用于严重完整性
                 long crcValue = ia.readLong("crcvalue");
+                // 反序列化得到整条事务日志
                 byte[] bytes = Util.readTxnBytes(ia);
                 // Since we preallocate, we define EOF to be an
                 if (bytes == null || bytes.length==0) {
                     throw new EOFException("Failed to read " + logFile);
                 }
+                // 校验完整性
                 // EOF or corrupted record
                 // validate CRC
                 Checksum crc = makeChecksumAlgorithm();
                 crc.update(bytes, 0, bytes.length);
                 if (crcValue != crc.getValue())
                     throw new IOException(CRC_ERROR);
+                // 解析事务记录
                 hdr = new TxnHeader();
                 record = SerializeUtils.deserializeTxn(bytes, hdr);
             } catch (EOFException e) {
+                // 说明一个文件已经读到末尾了，需要从下一个文件开始
                 LOG.debug("EOF exception " + e);
                 inputStream.close();
                 inputStream = null;

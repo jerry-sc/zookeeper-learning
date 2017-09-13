@@ -75,6 +75,9 @@ public class ZKDatabase {
      * all these members.
      */
     protected DataTree dataTree;
+    /**
+     * 管理每个客户端的连接超时时间，<sessionId, timeout>
+     */
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
     protected FileTxnSnapLog snapLog;
     protected long minCommittedLog, maxCommittedLog;
@@ -594,6 +597,9 @@ public class ZKDatabase {
         this.snapLog.close();
     }
 
+    /**
+     * 需要在zookeeper中的config节点下记录当前服务集群的所有IP端口信息
+     */
     public synchronized void initConfigInZKDatabase(QuorumVerifier qv) {
         if (qv == null) return; // only happens during tests
         try {

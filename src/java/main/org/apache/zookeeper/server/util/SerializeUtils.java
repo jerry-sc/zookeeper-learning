@@ -120,6 +120,9 @@ public class SerializeUtils {
         return txn;
     }
 
+    /**
+     * 先解析sessionTimeouts
+     */
     public static void deserializeSnapshot(DataTree dt,InputArchive ia,
             Map<Long, Integer> sessions) throws IOException {
         int count = ia.readInt("count");

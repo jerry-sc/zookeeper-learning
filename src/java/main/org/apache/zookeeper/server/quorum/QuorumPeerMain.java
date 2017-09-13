@@ -134,7 +134,7 @@ public class QuorumPeerMain {
             LOG.warn("Either no config or no quorum defined in config, running "
                     + " in standalone mode");
             // there is only server in the quorum -- run as standalone
-            // 单机启动
+            // ZooKeeperServerMain为单机启动管理类
             ZooKeeperServerMain.main(args);
         }
     }
@@ -158,6 +158,7 @@ public class QuorumPeerMain {
             ServerCnxnFactory cnxnFactory = null;
             ServerCnxnFactory secureCnxnFactory = null;
 
+            // 首先初始化连接管理类，等待启动线程
             if (config.getClientPortAddress() != null) {
                 cnxnFactory = ServerCnxnFactory.createFactory();
                 cnxnFactory.configure(config.getClientPortAddress(),
@@ -172,6 +173,7 @@ public class QuorumPeerMain {
                         true);
             }
 
+            // 创建并初始化
             quorumPeer = getQuorumPeer();
             quorumPeer.setTxnFactory(new FileTxnSnapLog(
                     config.getDataLogDir(),
@@ -193,6 +195,7 @@ public class QuorumPeerMain {
             if (config.getLastSeenQuorumVerifier() != null) {
                 quorumPeer.setLastSeenQuorumVerifier(config.getLastSeenQuorumVerifier(), false);
             }
+            // 将集群的网络信息写到内存数据库的config节点下
             quorumPeer.initConfigInZKDatabase();
             quorumPeer.setCnxnFactory(cnxnFactory);
             quorumPeer.setSecureCnxnFactory(secureCnxnFactory);
@@ -201,6 +204,8 @@ public class QuorumPeerMain {
             quorumPeer.setQuorumListenOnAllIPs(config.getQuorumListenOnAllIPs());
 
             quorumPeer.start();
+
+            // 等待quorumPeer线程运行完毕后，再执行主线程退出
             quorumPeer.join();
         } catch (InterruptedException e) {
             // warn, but generally this is ok

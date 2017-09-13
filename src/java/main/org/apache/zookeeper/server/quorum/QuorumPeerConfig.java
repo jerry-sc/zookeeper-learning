@@ -54,6 +54,9 @@ import org.apache.zookeeper.server.quorum.flexible.QuorumMaj;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.server.util.VerifyingFileFactory;
 
+/**
+ * 该类用于操作与文件系统中的配置文件，之后再将这些配置信息拷贝到实际运行的服务器中
+ */
 @InterfaceAudience.Public
 public class QuorumPeerConfig {
     private static final Logger LOG = LoggerFactory.getLogger(QuorumPeerConfig.class);
@@ -95,6 +98,11 @@ public class QuorumPeerConfig {
     /** defaults to -1 if not set explicitly */
     protected int maxSessionTimeout = -1;
 
+    /**
+     * localSession 的目的在于提高服务端连接的并发
+     * 具体特点请看
+     * {@link https://issues.apache.org/jira/browse/ZOOKEEPER-1147}
+     */
     protected boolean localSessionsEnabled = false;
     protected boolean localSessionsUpgradingEnabled = false;
 

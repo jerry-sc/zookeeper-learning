@@ -36,9 +36,14 @@ import org.apache.zookeeper.common.Time;
  * to expire connections.
  */
 public class ExpiryQueue<E> {
+
+    /**
+     * 记录每一个session的上一次超时时间点
+     */
     private final ConcurrentHashMap<E, Long> elemMap =
         new ConcurrentHashMap<E, Long>();
     /**
+     * 用来根据下次会话超时时间点 来归档会话，便于进行会话管理和超时检查
      * The maximum number of buckets is equal to max timeout/expirationInterval,
      * so the expirationInterval should not be too small compared to the
      * max timeout that this expiry queue needs to maintain.
@@ -47,16 +52,35 @@ public class ExpiryQueue<E> {
         new ConcurrentHashMap<Long, Set<E>>();
 
     /**
-     * 下次超时的时间
+     * 下次超时检查的时间点, 肯定是expirationInterval的倍数，以此来做到定时检查
      */
     private final AtomicLong nextExpirationTime = new AtomicLong();
+
+    /**
+     * 定时检查时间间隔，默认为tickTime
+     */
     private final int expirationInterval;
 
+    /**
+     * @param expirationInterval 定时检查的时间间隔，默认为tickTime
+     */
     public ExpiryQueue(int expirationInterval) {
         this.expirationInterval = expirationInterval;
         nextExpirationTime.set(roundToNextInterval(Time.currentElapsedTime()));
     }
 
+    /**
+     * 计算下次超时时间点，如果采用  nextExpirationTime = currentTime + sessionTimeout 那么需要实时检查，成本太高，
+     * 所以zookeeper设计成定时检查策略。每次检查的时间间隔默认为tickTime
+     * 所以下次的超时时间为为：  nextExpirationTime = currentTime + sessionTimeout
+     *                      nextExpirationTime = (nextExpirationTime / expirationInterval + 1) * expirationInterval
+     *
+     *             从该公式可以看到，nextExpirationTime 一定是expirationInterval 的整数倍，能够确保在nextExpirationTime一定超时
+     *             从而实现了分桶管理策略，在每个时间点（一定是expirationInterval整数倍）检查是否超时
+     *
+     *             核心思想是：将连续值 转化成了 离散值
+     *
+     */
     private long roundToNextInterval(long time) {
         return (time / expirationInterval + 1) * expirationInterval;
     }
@@ -126,6 +150,7 @@ public class ExpiryQueue<E> {
     }
 
     /**
+     * 获取下次超时检查的时间
      * @return milliseconds until next expiration time, or 0 if has already past
      */
     public long getWaitTime() {
@@ -155,6 +180,7 @@ public class ExpiryQueue<E> {
               expirationTime, newExpirationTime)) {
             set = expiryMap.remove(expirationTime);
         }
+        // 执行到这里，如果发现集合中仍有元素，那么这些一定是超时的连接，否则会经历会话迁移操作，移入到新的分桶中
         if (set == null) {
             return Collections.emptySet();
         }

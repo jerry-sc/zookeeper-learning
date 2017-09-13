@@ -116,6 +116,10 @@ public class QuorumMaj implements QuorumVerifier {
         return (long) 1;
     }
 
+    /**
+     * 所有服务器的ip端口信息，以及版本号
+     * @return
+     */
     public String toString() {
         StringBuilder sw = new StringBuilder();
 

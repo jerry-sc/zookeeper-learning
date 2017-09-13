@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * 首先会初始化一个Thread，作为整个ServerCnxnFactory的主线程，然后在初始化NIO或者Netty服务器。
  * 此工厂类相当于根据配置文件提供正确的socket连接处理类
  */
 public abstract class ServerCnxnFactory {
