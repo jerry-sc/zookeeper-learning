@@ -465,6 +465,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
 
     /**
+     * 当前投票
      * This is who I think the leader currently is.
      */
     volatile private Vote currentVote;
@@ -655,6 +656,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     private InetSocketAddress myClientAddr = null;
 
     /**
+     * 再次检查通信对方的有效性，防止过程中对方IP更改
      * Resolves hostname for a given server ID.
      *
      * This method resolves hostname for a given server ID in both quorumVerifer
@@ -793,8 +795,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             LOG.warn("Problem starting AdminServer", e);
             System.out.println(e);
         }
-        // 开始选举
+        // 初始化leader选举
         startLeaderElection();
+        // 调用自己的run方法启动线程
         super.start();
     }
 
@@ -848,9 +851,12 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         responder.running = false;
         responder.interrupt();
     }
+
+
     synchronized public void startLeaderElection() {
         try {
             if (getPeerState() == ServerState.LOOKING) {
+                // 创建第一张选票，初始的时候，总是投给自己
                 currentVote = new Vote(myid, getLastLoggedZxid(), getCurrentEpoch());
             }
         } catch(IOException e) {
@@ -1018,8 +1024,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
 
         LOG.debug("Starting quorum peer");
         try {
+            // 注册JMX
             jmxQuorumBean = new QuorumBean(this);
             MBeanRegistry.getInstance().register(jmxQuorumBean, null);
+
             for(QuorumServer s: getView().values()){
                 ZKMBeanInfo p;
                 if (getId() == s.id) {
@@ -1228,6 +1236,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
 
     /**
+     * 返回一个只读视图
      * A 'view' is a node's current opinion of the membership of the entire
      * ensemble.
      */
@@ -1250,6 +1259,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
        return getQuorumVerifier().getObservingMembers();
     }
 
+    /**
+     * 将quorumVerifier lastSeenQuorumVerifier中的voteId 合并
+     * @return
+     */
     public synchronized Set<Long> getCurrentAndNextConfigVoters() {
         Set<Long> voterIds = new HashSet<Long>(getQuorumVerifier()
                 .getVotingMembers().keySet());
@@ -1405,6 +1418,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         return tick.get();
     }
 
+    /**
+     * 从字符串中解析集群节点信息
+     */
     public QuorumVerifier configFromString(String s) throws IOException, ConfigException{
         Properties props = new Properties();        
         props.load(new StringReader(s));
@@ -1769,7 +1785,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         acceptedEpoch = e;
         writeLongToFile(ACCEPTED_EPOCH_FILENAME, e);
     }
-   
+
+    /**
+     * 当发现version版本不同时，进行重配置
+     */
     public boolean processReconfig(QuorumVerifier qv, Long suggestedLeaderId, Long zxid, boolean restartLE) {
        if (!QuorumPeerConfig.isReconfigEnabled()) {
            LOG.debug("Reconfig feature is disabled, skip reconfig processing.");

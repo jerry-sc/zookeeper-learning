@@ -46,6 +46,7 @@ public class SyncedLearnerTracker {
 
     public boolean hasAllQuorums() {
         for (QuorumVerifierAcksetPair qvAckset : qvAcksetPairs) {
+            // 判断是否已经选出leader
             if (!qvAckset.getQuorumVerifier().containsQuorum(qvAckset.getAckset()))
                 return false;
         }

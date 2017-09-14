@@ -40,6 +40,10 @@ public class QuorumMaj implements QuorumVerifier {
     private Map<Long, QuorumServer> allMembers = new HashMap<Long, QuorumServer>();
     private HashMap<Long, QuorumServer> votingMembers = new HashMap<Long, QuorumServer>();
     private HashMap<Long, QuorumServer> observingMembers = new HashMap<Long, QuorumServer>();
+
+    /**
+     * 用于重配置
+     */
     private long version = 0;
 
     /**

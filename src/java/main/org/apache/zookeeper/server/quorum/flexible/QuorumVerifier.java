@@ -24,12 +24,14 @@ import java.util.Map;
 import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 
 /**
+ * 该类负责维护配置的所有节点，它的职责在于判断给定一个集合，判断出该集合能形成一个法定集合，即最重要的方法{@link QuorumVerifier#containsQuorum(Set)}
+ *
+ * 默认提供了两种衡量方法，一种就是简单的超过半数就算；另一种相对复杂，需要基于权重
  * All quorum validators have to implement a method called
  * containsQuorum, which verifies if a HashSet of server 
  * identifiers constitutes a quorum.
  *
  */
-
 public interface QuorumVerifier {
     long getWeight(long id);
     boolean containsQuorum(Set<Long> set);

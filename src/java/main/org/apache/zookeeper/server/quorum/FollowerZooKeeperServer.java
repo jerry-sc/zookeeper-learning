@@ -50,8 +50,6 @@ public class FollowerZooKeeperServer extends LearnerZooKeeperServer {
     ConcurrentLinkedQueue<Request> pendingSyncs;
 
     /**
-     * @param port
-     * @param dataDir
      * @throws IOException
      */
     FollowerZooKeeperServer(FileTxnSnapLog logFactory,QuorumPeer self,
