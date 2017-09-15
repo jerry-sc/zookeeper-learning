@@ -80,6 +80,10 @@ public class ZKDatabase {
      */
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
     protected FileTxnSnapLog snapLog;
+
+    /**
+     * leader服务器提议缓存队列committedLog中最小的ZXID 和 最大的ZXID
+     */
     protected long minCommittedLog, maxCommittedLog;
 
     /**
@@ -332,7 +336,7 @@ public class ZKDatabase {
 
         TxnIterator itr = null;
         try {
-
+            // 从当前的事务ID开始，创建日志迭代器
             itr = snapLog.readTxnLog(startZxid, false);
 
             // If we cannot guarantee that this is strictly the starting txn

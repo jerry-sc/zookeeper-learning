@@ -72,7 +72,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * 单机版zookeeper服务端最为核心的实体类
+ * 单机版zookeeper服务端最为核心的实体类，也是标准服务器类
  * This class implements a simple standalone ZooKeeperServer. It sets up the
  * following chain of RequestProcessors to process requests:
  * PrepRequestProcessor -> SyncRequestProcessor -> FinalRequestProcessor
@@ -294,6 +294,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
          *  
          * See ZOOKEEPER-1642 for more detail.
          */
+
+        // 在Leader选举之前，已经恢复过一次数据，所以无需进行第二遍
         if(zkDb.isInitialized()){
             setZxid(zkDb.getDataTreeLastProcessedZxid());
         }
@@ -472,6 +474,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
     }
 
+    /**
+     * 正式启动，开始对外服务
+     */
     public synchronized void startup() {
         if (sessionTracker == null) {
             // 创建会话管理器

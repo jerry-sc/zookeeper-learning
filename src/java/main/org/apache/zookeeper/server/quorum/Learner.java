@@ -52,6 +52,7 @@ import org.apache.zookeeper.txn.SetDataTxn;
 import org.apache.zookeeper.txn.TxnHeader;
 
 /**
+ * follower 和 observer 统称为 learner
  * This class is the superclass of two of the three main actors in a ZK
  * ensemble: Followers and Observers. Both Followers and Observers share 
  * a good deal of code which is moved into Peer to avoid duplication. 
@@ -126,6 +127,7 @@ public class Learner {
     }     
     
     /**
+     * 发送数据给leader
      * write a packet to the leader
      *
      * @param pp
@@ -152,6 +154,7 @@ public class Learner {
      */
     void readPacket(QuorumPacket pp) throws IOException {
         synchronized (leaderIs) {
+            // 会阻塞直到数据到达，然后反序列化
             leaderIs.readRecord(pp, "packet");
         }
         long traceMask = ZooTrace.SERVER_PACKET_TRACE_MASK;
@@ -191,6 +194,7 @@ public class Learner {
     }
     
     /**
+     * 通常，最新的投票信息里面包含了leader的Id
      * Returns the address of the node we think is the leader.
      */
     protected InetSocketAddress findLeader() {
@@ -228,6 +232,7 @@ public class Learner {
     }
 
     /**
+     * 尝试和leader建立连接
      * Establish a connection with the Leader found by findLeader. Retries
      * until either initLimit time has elapsed or 5 tries have happened. 
      * @param addr - the address of the Leader to connect to.
@@ -244,6 +249,7 @@ public class Learner {
         int remainingInitLimitTime = initLimitTime;
         long startNanoTime = nanoTime();
 
+        // 尝试5次或者超时
         for (int tries = 0; tries < 5; tries++) {
             try {
                 // recalculate the init limit time because retries sleep for 1000 milliseconds
@@ -253,6 +259,7 @@ public class Learner {
                     throw new IOException("initLimit exceeded on retries.");
                 }
 
+                // 建立连接
                 sockConnect(sock, addr, Math.min(self.tickTime * self.syncLimit, remainingInitLimitTime));
                 sock.setTcpNoDelay(nodelay);
                 break;
@@ -286,6 +293,9 @@ public class Learner {
     }   
     
     /**
+     * 与leader连接建立完成后，开始向leader注册，所谓注册就是将learner服务器自己的基本信息发送给leader服务器，称之为LearnerInfo，
+     * 包括当前服务器的SID和服务器处理的最新ZXID
+     *
      * Once connected to the leader, perform the handshake protocol to
      * establish a following / observing connection. 
      * @param pktType
@@ -297,8 +307,10 @@ public class Learner {
          * Send follower info, including last zxid and sid
          */
     	long lastLoggedZxid = self.getLastLoggedZxid();
+
         QuorumPacket qp = new QuorumPacket();                
         qp.setType(pktType);
+        // 注意：这里的zxid只包含了当前接受的epoch，没有包含事务计数
         qp.setZxid(ZxidUtils.makeZxid(self.getAcceptedEpoch(), 0));
         
         /*
@@ -311,14 +323,19 @@ public class Learner {
         qp.setData(bsid.toByteArray());
         
         writePacket(qp, true);
-        readPacket(qp);        
+
+        // 发送完会阻塞，知道收到最新的epoch值，包含在leader发送过来的LEADERINFO消息中
+        readPacket(qp);
+
         final long newEpoch = ZxidUtils.getEpochFromZxid(qp.getZxid());
 		if (qp.getType() == Leader.LEADERINFO) {
         	// we are connected to a 1.0 server so accept the new epoch and read the next packet
         	leaderProtocolVersion = ByteBuffer.wrap(qp.getData()).getInt();
         	byte epochBytes[] = new byte[4];
         	final ByteBuffer wrappedEpochBytes = ByteBuffer.wrap(epochBytes);
+        	// 如果epoch更加新，则接受该epoch值，并准备发送回ack响应
         	if (newEpoch > self.getAcceptedEpoch()) {
+        	    // 响应中包括当前的epoch值
         		wrappedEpochBytes.putInt((int)self.getCurrentEpoch());
         		self.setAcceptedEpoch(newEpoch);
         	} else if (newEpoch == self.getAcceptedEpoch()) {
@@ -330,7 +347,9 @@ public class Learner {
         	} else {
         		throw new IOException("Leaders epoch, " + newEpoch + " is less than accepted epoch, " + self.getAcceptedEpoch());
         	}
+        	// 响应中还包含了当前服务器已经处理过的最大事务ID
         	QuorumPacket ackNewEpoch = new QuorumPacket(Leader.ACKEPOCH, lastLoggedZxid, epochBytes, null);
+        	// 发送ACK响应
         	writePacket(ackNewEpoch, true);
             return ZxidUtils.makeZxid(newEpoch, 0);
         } else {
@@ -346,6 +365,7 @@ public class Learner {
     } 
     
     /**
+     * 开始数据同步
      * Finally, synchronize our history with the Leader. 
      * @param newLeaderZxid
      * @throws IOException

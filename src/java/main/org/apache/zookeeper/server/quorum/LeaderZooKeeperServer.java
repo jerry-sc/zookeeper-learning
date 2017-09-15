@@ -34,7 +34,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- *
+ * 创建Leader服务器，继承自ZookeeperServer
  * Just like the standard ZooKeeperServer. We just replace the request
  * processors: PrepRequestProcessor -> ProposalRequestProcessor ->
  * CommitProcessor -> Leader.ToBeAppliedRequestProcessor ->
@@ -48,11 +48,7 @@ public class LeaderZooKeeperServer extends QuorumZooKeeperServer {
 
     PrepRequestProcessor prepRequestProcessor;
 
-    /**
-     * @param port
-     * @param dataDir
-     * @throws IOException
-     */
+
     LeaderZooKeeperServer(FileTxnSnapLog logFactory, QuorumPeer self, ZKDatabase zkDb) throws IOException {
         super(logFactory, self.tickTime, self.minSessionTimeout, self.maxSessionTimeout, zkDb, self);
     }

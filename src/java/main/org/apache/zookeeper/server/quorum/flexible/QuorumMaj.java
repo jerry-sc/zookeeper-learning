@@ -142,6 +142,7 @@ public class QuorumMaj implements QuorumVerifier {
     }    
 
     /**
+     * 判断是否已经有过半集合响应
      * Verifies if a set is a majority. Assumes that ackSet contains acks only
      * from votingMembers
      */

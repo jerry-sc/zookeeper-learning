@@ -527,6 +527,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     protected boolean syncEnabled = true;
 
     /**
+     * 单位是ticktime，记录当前是第几个心跳周期，主要用来判断是否超时
      * The current tick
      */
     protected AtomicInteger tick = new AtomicInteger();
@@ -538,6 +539,7 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     protected boolean quorumListenOnAllIPs = false;
 
     /**
+     * leader选举花费时间
      * Keeps time taken for leader election in milliseconds. Sets the value to
      * this variable only after the completion of leader election.
      */
@@ -785,8 +787,9 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
         if (!getView().containsKey(myid)) {
             throw new RuntimeException("My id " + myid + " not in the peer list");
          }
-        loadDataBase();
 
+         // 恢复数据
+        loadDataBase();
 
         startServerCnxnFactory();
         try {

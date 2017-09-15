@@ -34,6 +34,7 @@ import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 
 /**
+ * 为集群服务器 抽象类
  * Abstract base class for all ZooKeeperServers that participate in
  * a quorum.
  */

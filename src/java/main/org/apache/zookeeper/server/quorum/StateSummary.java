@@ -19,6 +19,7 @@
 package org.apache.zookeeper.server.quorum;
 
 /**
+ * 封装了事务状态，同时为事务先后比较进行封装
  * This class encapsulates the state comparison logic. Specifically,
  * how two different states are compared.
  */
@@ -37,7 +38,11 @@ public class StateSummary {
 	public long getLastZxid() {
 		return lastZxid;
 	}
-	
+
+    /**
+     * 用于比较两个事务发生顺序
+     * @return true 更新
+     */
 	public boolean isMoreRecentThan(StateSummary ss) {
 		return (currentEpoch > ss.currentEpoch) || (currentEpoch == ss.currentEpoch && lastZxid > ss.lastZxid);
 	}
