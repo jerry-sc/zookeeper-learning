@@ -365,6 +365,7 @@ public class FileTxnSnapLog {
     }
 
     /**
+     * 截断日志文件，使得记录的日志文件最大事务ID 为给定zxid值
      * truncate the transaction logs the zxid
      * specified
      * @param zxid the zxid to truncate the logs to

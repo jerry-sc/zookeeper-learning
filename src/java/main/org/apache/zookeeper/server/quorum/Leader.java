@@ -523,7 +523,7 @@ public class Leader {
              self.setCurrentEpoch(epoch);    
             
              try {
-                 // 开始数据同步
+                 // 等待数据同步完成,收到半数以上响应
                  waitForNewLeaderAck(self.getId(), zk.getZxid(), LearnerType.PARTICIPANT);
              } catch (InterruptedException e) {
                  shutdown("Waiting for a quorum of followers, only synced with sids: [ "
@@ -549,6 +549,7 @@ public class Leader {
                  return;
              }
 
+             // 开启leader
              startZkServer();
              
             /**
@@ -588,6 +589,7 @@ public class Leader {
             // If not null then shutdown this leader
             String shutdownMessage = null;
 
+            // 对是否超时进行管理，而底层通信全部交给了 learnerHandler来处理， 至此，所有集群已经正式启动，可以为客户端服务
             while (true) {
                 synchronized (this) {
                     long start = Time.currentElapsedTime();

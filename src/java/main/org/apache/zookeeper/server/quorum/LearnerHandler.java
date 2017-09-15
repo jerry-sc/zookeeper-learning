@@ -235,6 +235,7 @@ public class LearnerHandler extends ZooKeeperThread {
                     p = queuedPackets.take();
                 }
 
+                // 判断是否是最后一个包
                 if (p == proposalOfDeath) {
                     // Packet of death!
                     break;
@@ -446,13 +447,15 @@ public class LearnerHandler extends ZooKeeperThread {
                 leader.waitForEpochAck(this.getSid(), ss);
             }
 
+            // learner的上一个ID
             peerLastZxid = ss.getLastZxid();
            
             // Take any necessary action if we need to send TRUNC or DIFF
             // startForwarding() will be called in all cases
             // 是否需要全量同步
             boolean needSnap = syncFollower(peerLastZxid, leader.zk.getZKDatabase(), leader);
-            
+
+            // 发送 NEWLEADER 消息, 等待超过半数响应
             LOG.debug("Sending NEWLEADER message to " + sid);
             // the version of this quorumVerifier will be set by leader.lead() in case
             // the leader is just being established. waitForEpochAck makes sure that readyToStart is true if
@@ -470,6 +473,13 @@ public class LearnerHandler extends ZooKeeperThread {
             bufferedOutput.flush();
 
             /* if we are not truncating or sending a diff just send a snapshot */
+            /**
+             * 只有两种情况需要做全量同步：
+             * 1. 由于需要同步的数量太大
+             * 2. learner的zxid位于 minCommittedLog 和 maxCommittedLog之间，但两者的epoch不同
+             *
+             * 所谓全量同步：就是将内存数据库：数据节点信息和session管理器序列化后发送给对方
+             */
             if (needSnap) {
                 boolean exemptFromThrottle = getLearnerType() != LearnerType.OBSERVER;
                 LearnerSnapshot snapshot = 
@@ -488,6 +498,7 @@ public class LearnerHandler extends ZooKeeperThread {
                             snapshot.getConcurrentSnapshotNumber(),
                             snapshot.isEssential() ? "exempt" : "not exempt");
                     // Dump data to peer
+                    // 将内存数据库发送给对方
                     leader.zk.getZKDatabase().serializeSnapshot(oa);
                     oa.writeString("BenWasHere", "signature");
                     bufferedOutput.flush();
@@ -497,6 +508,7 @@ public class LearnerHandler extends ZooKeeperThread {
             }
 
             // Start thread that blast packets in the queue to learner
+            // 开启一个线程发送同步数据包
             startSendingPackets();
             
             /*
@@ -515,8 +527,10 @@ public class LearnerHandler extends ZooKeeperThread {
             if(LOG.isDebugEnabled()){
             	LOG.debug("Received NEWLEADER-ACK message from " + sid);   
             }
+            // 等待半数以上的ack响应
             leader.waitForNewLeaderAck(getSid(), qp.getZxid(), getLearnerType());
 
+            // 时间同步控制
             syncLimitCheck.start();
             
             // now that the ack has been processed expect the syncLimit
@@ -534,9 +548,11 @@ public class LearnerHandler extends ZooKeeperThread {
             // so we need to mark when the peer can actually start
             // using the data
             //
-            LOG.debug("Sending UPTODATE message to " + sid);      
+            LOG.debug("Sending UPTODATE message to " + sid);
+            // 发送给服务器表示可以接受客户端响应了
             queuedPackets.add(new QuorumPacket(Leader.UPTODATE, -1, null, null));
 
+            // 之后就不断接受来自learner的请求，并做出响应恢复
             while (true) {
                 qp = new QuorumPacket();
                 ia.readRecord(qp, "packet");
@@ -678,8 +694,8 @@ public class LearnerHandler extends ZooKeeperThread {
      * 判断是否需要全量同步，如果不是，那么决定采用哪种同步方式
      *
      * 一共有四种同步方式：
-     * 1. DIFF
-     * 2. TRUNC
+     * 1. DIFF 只是一个标识，并没有携带日志内容，需要从日志文件中解析出来，然后再发送，每一条日志后紧跟一个commit请求
+     * 2. TRUNC 不需要接一个commit请求
      * 3. TRUNC + DIFF
      * 4. SNAP
      *
@@ -798,6 +814,7 @@ public class LearnerHandler extends ZooKeeperThread {
                 // learner 可能丢失了日志，所以采用全量同步
                 // Use txnlog and committedLog to sync
 
+                // 以下两步，首先判断是否恢复的数据量过大，如果不大，仍然不需要全量同步，还是和之前一样，使用diff做
                 // Calculate sizeLimit that we allow to retrieve txnlog from disk
                 long sizeLimit = db.calculateTxnLogSizeLimit();
                 // This method can return empty iterator if the requested zxid
@@ -869,6 +886,7 @@ public class LearnerHandler extends ZooKeeperThread {
             }
 
             // skip the proposals the peer already has
+            // 跳过
             if (packetZxid < peerLastZxid) {
                 prevProposalZxid = packetZxid;
                 continue;
@@ -885,6 +903,7 @@ public class LearnerHandler extends ZooKeeperThread {
                              Long.toHexString(lastCommittedZxid) +
                              " for peer sid: " + getSid());
                     queueOpPacket(Leader.DIFF, lastCommittedZxid);
+                    // 之后将(peerLaxtZxid, lastCommittedZxid] 范围内的所有请求发送给learner，每个请求后紧跟一个commit
                     needOpPacket = false;
                     continue;
                 }
@@ -927,8 +946,9 @@ public class LearnerHandler extends ZooKeeperThread {
 
             // Since this is already a committed proposal, we need to follow
             // it by a commit packet
-            // 只有立即跟一个提交请求
+            // 发送日志内容，日志的type 为 Proposal
             queuePacket(propose.packet);
+            // 只有立即跟一个提交请求
             queueOpPacket(Leader.COMMIT, packetZxid);
             queuedZxid = packetZxid;
 

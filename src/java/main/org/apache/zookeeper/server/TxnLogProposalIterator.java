@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * 主要 用于从日志文件中反序列化日志记录成Proposal，为调用者调用提供方便
  * This class provides an iterator interface to access Proposal deserialized
  * from on-disk txnlog. The iterator deserializes one proposal at a time
  * to reduce memory footprint. Note that the request part of the proposal

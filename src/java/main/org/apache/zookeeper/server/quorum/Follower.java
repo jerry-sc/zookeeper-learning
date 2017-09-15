@@ -95,8 +95,10 @@ public class Follower extends Learner{
                     throw new IOException("Error: Epoch of leader is lower");
                 }
                 // 开始与leader同步数据
-                syncWithLeader(newEpochZxid);                
+                syncWithLeader(newEpochZxid);
+                // 完成同步，并已经启动learner服务器
                 QuorumPacket qp = new QuorumPacket();
+                // 之后就一直处理与leader之间的数据交互
                 while (this.isRunning()) {
                     readPacket(qp);
                     processPacket(qp);
@@ -118,6 +120,7 @@ public class Follower extends Learner{
     }
 
     /**
+     * 针对每一种响应做出反应
      * Examine the packet received in qp and dispatch based on its contents.
      * @param qp
      * @throws IOException

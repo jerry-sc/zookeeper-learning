@@ -528,6 +528,7 @@ public class ZKDatabase {
     }
 
     /**
+     * 相当于清空所有内存数据，然后重新加载
      * Truncate the ZKDatabase to the specified zxid
      * @param zxid the zxid to truncate zk database to
      * @return true if the truncate is successful and false if not
@@ -543,6 +544,7 @@ public class ZKDatabase {
             return false;
         }
 
+        // 重新加载入内存，保持内存数据库状态和leader一致
         loadDataBase();
         return true;
     }

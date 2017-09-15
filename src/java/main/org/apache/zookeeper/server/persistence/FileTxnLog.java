@@ -404,6 +404,8 @@ public class FileTxnLog implements TxnLog {
     }
 
     /**
+     * 截断超过给定事务ID的记录和日志文件
+     * 方法很暴力：先清空内存数据库，在zxid所在文件中，删除大的记录，再删除比zxid大的日志文件，最后，重新加载一遍到内存
      * truncate the current transaction logs
      * @param zxid the zxid to truncate the logs to
      * @return true if successful false if not
@@ -615,17 +617,20 @@ public class FileTxnLog implements TxnLog {
          */
         void init() throws IOException {
             storedFiles = new ArrayList<File>();
+            // 找到所有日志文件，并倒排序
             List<File> files = Util.sortDataDir(FileTxnLog.getLogFiles(logDir.listFiles(), 0), "log", false);
             for (File f: files) {
                 if (Util.getZxidFromName(f.getName(), "log") >= zxid) {
                     storedFiles.add(f);
                 }
                 // add the last logfile that is less than the zxid
+                // 加入第一个小于该zxid的日志文件，说明zxid的日志记录在该文件中
                 else if (Util.getZxidFromName(f.getName(), "log") < zxid) {
                     storedFiles.add(f);
                     break;
                 }
             }
+            // 打开第一个文件
             goToNextLog();
             next();
         }
@@ -650,6 +655,7 @@ public class FileTxnLog implements TxnLog {
          */
         private boolean goToNextLog() throws IOException {
             if (storedFiles.size() > 0) {
+                // 获取最后一个文件，并打开
                 this.logFile = storedFiles.remove(storedFiles.size()-1);
                 ia = createInputArchive(this.logFile);
                 return true;
