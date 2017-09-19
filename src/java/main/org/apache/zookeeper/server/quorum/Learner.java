@@ -169,6 +169,7 @@ public class Learner {
     }
 
     /**
+     * 将请求转发给leader
      * send a request packet to the leader
      *
      * @param request

@@ -101,6 +101,7 @@ public class SyncRequestProcessor extends ZooKeeperCriticalThread implements
         try {
             int logCount = 0;
 
+            // 日志文件扩容
             // we do this in an attempt to ensure that not all of the servers
             // in the ensemble take a snapshot at the same time
             int randRoll = r.nextInt(snapCount/2);

@@ -991,6 +991,7 @@ public class LearnerHandler extends ZooKeeperThread {
     }
 
     /**
+     * leader定时给learner发送ping，检查是否存活
      * ping calls from the leader to the peers
      */
     public void ping() {

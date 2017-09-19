@@ -694,6 +694,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             passwd = new byte[0];
         }
         long sessionId = sessionTracker.createSession(timeout);
+        // 生成会话密码
         Random r = new Random(sessionId ^ superSecret);
         r.nextBytes(passwd);
         ByteBuffer to = ByteBuffer.allocate(4);
@@ -1008,7 +1009,14 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         return zkDb.getEphemerals();
     }
 
+    /**
+     * 处理会话连接请求
+     * @param cnxn
+     * @param incomingBuffer
+     * @throws IOException
+     */
     public void processConnectRequest(ServerCnxn cnxn, ByteBuffer incomingBuffer) throws IOException {
+        // 反序列化
         BinaryInputArchive bia = BinaryInputArchive.getArchive(new ByteBufferInputStream(incomingBuffer));
         ConnectRequest connReq = new ConnectRequest();
         connReq.deserialize(bia, "connect");
@@ -1018,6 +1026,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
                     + " client's lastZxid is 0x"
                     + Long.toHexString(connReq.getLastZxidSeen()));
         }
+        // 检查是否是只读客户端
         boolean readOnly = false;
         try {
             readOnly = bia.readBool("readOnly");
@@ -1035,6 +1044,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             LOG.info(msg);
             throw new CloseRequestException(msg);
         }
+        // 正常情况下，服务端的ZXID必定大于客户端的ZXID
         if (connReq.getLastZxidSeen() > zkDb.dataTree.lastProcessedZxid) {
             String msg = "Refusing session request for client "
                 + cnxn.getRemoteSocketAddress()
@@ -1047,6 +1057,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             LOG.info(msg);
             throw new CloseRequestException(msg);
         }
+        // 协商sessionTimeout，客户端请求时，会带有一个超时时间，服务器也维护了最小和最大的超时时间，因此通过协商决定最后的超时时间
         int sessionTimeout = connReq.getTimeOut();
         byte passwd[] = connReq.getPasswd();
         int minSessionTimeout = getMinSessionTimeout();
@@ -1061,12 +1072,16 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         // We don't want to receive any packets until we are sure that the
         // session is setup
         cnxn.disableRecv();
+
+        // 判断是否需要重新创建会话
         long sessionId = connReq.getSessionId();
+        // 新建会话
         if (sessionId == 0) {
             LOG.info("Client attempting to establish new session at "
                     + cnxn.getRemoteSocketAddress());
             createSession(cnxn, passwd, sessionTimeout);
         } else {
+            // 会话重连
             long clientSessionId = connReq.getSessionId();
             LOG.info("Client attempting to renew session 0x"
                     + Long.toHexString(clientSessionId)

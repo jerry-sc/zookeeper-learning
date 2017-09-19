@@ -438,6 +438,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             try {
                 // 在此阻塞
                 // 第一次，通过accept为其分配新连接后，调用selector的wakeup方法唤醒
+                // 需要注意的是，第一次该selector并没有注册任何 感兴趣事件，所以即使在这里跳出阻塞，也不会执行下面的while循环
                 selector.select();
 
                 // 可能同时有多个通道就绪
@@ -483,7 +484,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
         }
 
         /**
-         * 管理新分配过来的新连接，为其分配一个新的连接管理
+         * 管理新分配过来的新连接，为其分配一个新的连接管理，这里才是真正注册感兴趣事件的地方
          * Iterate over the queue of accepted connections that have been
          * assigned to this thread but not yet placed on the selector.
          */
@@ -492,6 +493,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             while (!stopped && (accepted = acceptedQueue.poll()) != null) {
                 SelectionKey key = null;
                 try {
+                    // 注册read事件
                     key = accepted.register(selector, SelectionKey.OP_READ);
                     NIOServerCnxn cnxn = createConnection(accepted, key, this);
                     // 将键与其管理对象相关联,通过attachment获取

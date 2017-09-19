@@ -257,6 +257,7 @@ public class ZKDatabase {
     }
 
     /**
+     * 将事务请求写入日志
      * maintains a list of last <i>committedLog</i>
      *  or so committed requests. This is used for
      * fast follower synchronization.

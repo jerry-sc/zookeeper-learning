@@ -69,7 +69,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * 最后一个处理器
+ * 最后一个处理器，用来进行客户端请求返回之前的收尾工作，包括创建客户端请求的响应；针对事务请求，该处理器还会负责将事务应用到内存数据库中去
  * This Request processor actually applies any transaction associated with a
  * request and services any queries. It is always at the end of a
  * RequestProcessor chain (hence the name), so it does not have a nextProcessor
@@ -102,6 +102,7 @@ public class FinalRequestProcessor implements RequestProcessor {
         ProcessTxnResult rc = null;
         synchronized (zks.outstandingChanges) {
             // Need to process local session requests
+            // 执行事务请求
             rc = zks.processTxn(request);
 
             // request.hdr is set for write requests, which are the only ones
@@ -124,6 +125,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             }
 
             // do not add non quorum packets to the queue.
+            // 如果是事务请求，那么将请求写入事务
             if (request.isQuorum()) {
                 zks.getZKDatabase().addCommittedProposal(request);
             }
@@ -178,6 +180,8 @@ public class FinalRequestProcessor implements RequestProcessor {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("{}",request);
             }
+
+            //
             switch (request.type) {
             case OpCode.ping: {
                 zks.serverStats().updateLatency(request.createTime);
@@ -448,6 +452,7 @@ public class FinalRequestProcessor implements RequestProcessor {
             err = Code.MARSHALLINGERROR;
         }
 
+        // 创建客户端请求的响应
         long lastZxid = zks.getZKDatabase().getDataTreeLastProcessedZxid();
         ReplyHeader hdr =
             new ReplyHeader(request.cxid, lastZxid, err.intValue());

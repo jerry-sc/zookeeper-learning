@@ -82,6 +82,7 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
+ * 对于收到的事务请求，为其创建事务头，事务体，然后转交给下一个处理器
  * This request processor is generally at the start of a RequestProcessor
  * change. It sets up any transactions associated with requests that change the
  * state of the system. It counts on ZooKeeperServer to update
@@ -361,9 +362,11 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                                 Record record, boolean deserialize)
         throws KeeperException, IOException, RequestProcessorException
     {
+        // 设置请求事务头
         request.setHdr(new TxnHeader(request.sessionId, request.cxid, zxid,
                 Time.currentWallTime(), type));
 
+        // 设置事务请求体
         switch (type) {
             case OpCode.create:
             case OpCode.create2:
@@ -575,6 +578,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 addChangeRecord(nodeRecord);
                 break;
             case OpCode.createSession:
+                // 创建会话请求
                 request.request.rewind();
                 int to = request.request.getInt();
                 request.setTxn(new CreateSessionTxn(to));
@@ -847,6 +851,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 break;
 
             //create/close session don't require request record
+                // 创建会话请求
             case OpCode.createSession:
             case OpCode.closeSession:
                 if (!request.isLocalSession()) {
@@ -905,6 +910,7 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
                 request.setTxn(new ErrorTxn(Code.MARSHALLINGERROR.intValue()));
             }
         }
+        // 下一个处理器继续处理
         request.zxid = zks.getZxid();
         nextProcessor.processRequest(request);
     }

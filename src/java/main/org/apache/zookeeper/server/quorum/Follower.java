@@ -132,6 +132,7 @@ public class Follower extends Learner{
             break;
         case Leader.PROPOSAL:           
             TxnHeader hdr = new TxnHeader();
+            // 反序列化
             Record txn = SerializeUtils.deserializeTxn(qp.getData(), hdr);
             if (hdr.getZxid() != lastQueued + 1) {
                 LOG.warn("Got zxid 0x"
@@ -146,7 +147,7 @@ public class Follower extends Learner{
                QuorumVerifier qv = self.configFromString(new String(setDataTxn.getData()));
                self.setLastSeenQuorumVerifier(qv, true);                               
             }
-            
+            // 日志记录
             fzk.logRequest(hdr, txn);
             break;
         case Leader.COMMIT:

@@ -72,6 +72,8 @@ public class FollowerRequestProcessor extends ZooKeeperCriticalThread implements
                 // the response
                 nextProcessor.processRequest(request);
 
+                // 如果收到的请求不是以下几种类型中的，说明不是事务请求，那么直接由上面的这一步交给了后面的commit处理器进行处理
+
                 // We now ship the request to the leader. As with all
                 // other quorum operations, sync also follows this code
                 // path, but different from others, we need to keep track

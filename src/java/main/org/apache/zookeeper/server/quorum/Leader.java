@@ -282,6 +282,7 @@ public class Leader {
     final static int FOLLOWERINFO = 11;
 
     /**
+     * 用来告诉Learner服务器，已经完成了数据同步，可以开始对外提供服务了
      * This message type is sent by the leader to indicate that the follower is
      * now uptodate andt can start responding to clients.
      */
@@ -299,28 +300,33 @@ public class Leader {
     public static final int ACKEPOCH = 18;
 
     /**
+     * 由learner发送给leader，将事务请求转发给leader，由其处理
      * This message type is sent to a leader to request and mutation operation.
      * The payload will consist of a request header followed by a request.
      */
     final static int REQUEST = 1;
 
     /**
+     * ZAB核心所在，由leader发送给learner，进行投票
      * This message type is sent by a leader to propose a mutation.
      */
     public final static int PROPOSAL = 2;
 
     /**
+     * learner收到proposal消息后，会进行事务日志记录，如果完成了，发送ack回给leader
      * This message type is sent by a follower after it has synced a proposal.
      */
     final static int ACK = 3;
 
     /**
+     * leader收到过半的ack后，发给learner进行事务提交
      * This message type is sent by a leader to commit a proposal and cause
      * followers to start serving the corresponding data.
      */
     final static int COMMIT = 4;
 
     /**
+     *
      * This message type is enchanged between follower and leader (initiated by
      * follower) to determine liveliness.
      */
@@ -338,6 +344,7 @@ public class Leader {
     final static int SYNC = 7;
 
     /**
+     * 发送给observer
      * This message type informs observers of a committed proposal.
      */
     final static int INFORM = 8;
@@ -933,6 +940,7 @@ public class Leader {
          * @see org.apache.zookeeper.server.RequestProcessor#processRequest(org.apache.zookeeper.server.Request)
          */
         public void processRequest(Request request) throws RequestProcessorException {
+            // 逐个提交处理，处理后再删除
             next.processRequest(request);
 
             // The only requests that should be on toBeApplied are write

@@ -183,6 +183,7 @@ public class NIOServerCnxn extends ServerCnxn {
         if (incomingBuffer.remaining() == 0) { // have we read length bytes?
             packetReceived();
             incomingBuffer.flip();
+            // 首先检查当前会话是否已经被初始化，如果尚未初始化，那么久可以确定客户端请求一定是会话创建请求
             if (!initialized) {
                 readConnectRequest();
             } else {
@@ -337,6 +338,7 @@ public class NIOServerCnxn extends ServerCnxn {
                     boolean isPayload;
                     if (incomingBuffer == lenBuffer) { // start of next request
                         incomingBuffer.flip();
+                        // 读取请求长度，长度保存在前四个字节中
                         isPayload = readLength(k);
                         incomingBuffer.clear();
                     } else {
@@ -344,6 +346,7 @@ public class NIOServerCnxn extends ServerCnxn {
                         isPayload = true;
                     }
                     if (isPayload) { // not the case for 4letterword
+                        // 读取请求内容
                         readPayload();
                     }
                     else {

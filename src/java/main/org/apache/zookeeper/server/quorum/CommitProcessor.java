@@ -129,6 +129,9 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
         return numRequestsProcessing.get() != 0;
     }
 
+    /**
+     * 判断是否是事务请求
+     */
     protected boolean needCommit(Request request) {
         switch (request.type) {
             case OpCode.create:
@@ -196,6 +199,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
                 while (!stopped && requestsToProcess > 0
                         && (request = queuedRequests.poll()) != null) {
                     requestsToProcess--;
+                    // 是否是事务请求
                     if (needCommit(request)
                             || pendingRequests.containsKey(request.sessionId)) {
                         // Add request to pending
@@ -208,6 +212,7 @@ public class CommitProcessor extends ZooKeeperCriticalThread implements
                         requests.addLast(request);
                     }
                     else {
+                        // 如果不是事务请求，则直接调用下一个
                         sendToNextProcessor(request);
                     }
                     /*

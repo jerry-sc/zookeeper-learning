@@ -30,6 +30,7 @@ import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.txn.TxnHeader;
 
 /**
+ * 在责任链中执行的请求
  * This is the structure that represents a request moving through a chain of
  * RequestProcessors. There are various pieces of information that is tacked
  * onto the request as it is processed.
@@ -162,6 +163,7 @@ public class Request {
         }
     }
 
+    // 判断是否是事务请求
     public boolean isQuorum() {
         switch (this.type) {
         case OpCode.exists:
